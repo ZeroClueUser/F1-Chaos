@@ -2,153 +2,225 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Chaos-Caster v4.3 - Full Spec</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chaos-Caster v5.0 | The War Room</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Courier+Prime:ital,wght@0,400;0,700;1,400&family=Inter:wght@400;700;900&family=Playfair+Display:ital,wght@0,700;1,700&display=swap" rel="stylesheet">
     <style>
-        :root { --accent: #3b82f6; --bg: rgba(15, 23, 42, 0.9); }
-        body { background: #000; color: #fff; font-family: sans-serif; margin: 0; overflow-x: hidden; }
-        #bg-layer { 
-            position: fixed; top:0; left:0; width:100vw; height:100vh; z-index:-1; 
-            background-size:cover; background-position:center; 
-            filter: brightness(0.35) saturate(1.2); transition: background-image 1.5s ease-in-out; 
+        :root { 
+            --accent: #3b82f6; 
+            --bg-color: #050505;
+            --glass-bg: rgba(10, 15, 25, 0.85);
+            --font-main: 'Inter', sans-serif;
         }
-        .glass { background: var(--bg); backdrop-filter: blur(12px); border: 1px solid var(--accent); border-radius: 12px; }
-        .driver-card { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); cursor: pointer; }
-        .driver-card:hover { transform: translateY(-4px); background: rgba(255,255,255,0.05); }
-        .selected { border: 2px solid var(--accent) !important; box-shadow: 0 0 20px var(--accent); background: rgba(255, 255, 255, 0.05); }
-        .cost-badge { font-family: monospace; color: #4ade80; background: #000; padding: 2px 6px; border-radius: 4px; border: 1px solid #4ade80; }
         
-        /* Custom scrollbar for a techy feel */
-        ::-webkit-scrollbar { width: 6px; }
-        ::-webkit-scrollbar-track { background: #000; }
-        ::-webkit-scrollbar-thumb { background: var(--accent); border-radius: 10px; }
+        body { 
+            background: var(--bg-color); 
+            color: #fff; 
+            font-family: var(--font-main); 
+            margin: 0; 
+            overflow-x: hidden;
+            transition: font-family 0.4s ease, background-color 0.4s ease;
+        }
+
+        /* The Visual "Soul" Layers */
+        #bg-layer { 
+            position: fixed; top:0; left:0; width:100vw; height:100vh; z-index:-2; 
+            background-size:cover; background-position:center; 
+            filter: brightness(0.2) saturate(1.2); 
+            transition: background-image 1s ease, filter 0.5s ease; 
+        }
+        
+        .scanlines { 
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; 
+            background: linear-gradient(to bottom, rgba(255,255,255,0), rgba(255,255,255,0) 50%, rgba(0,0,0,0.25) 50%, rgba(0,0,0,0.25)); 
+            background-size: 100% 4px; z-index: -1; pointer-events: none; 
+            opacity: 0; transition: opacity 0.5s ease; 
+        }
+
+        /* Glassmorphism & Cards */
+        .glass { 
+            background: var(--glass-bg); 
+            backdrop-filter: blur(16px); 
+            border: 1px solid var(--accent); 
+            border-radius: 8px; 
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+        
+        .driver-card { transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); cursor: pointer; position: relative; overflow: hidden; }
+        .driver-card:hover { transform: translateY(-4px); background: rgba(255,255,255,0.05); }
+        .selected { border: 2px solid var(--accent) !important; box-shadow: 0 0 25px var(--accent); background: rgba(255, 255, 255, 0.08); }
+        
+        /* Badges & Text */
+        .cost-badge { font-family: 'Courier Prime', monospace; color: #4ade80; background: #000; padding: 3px 8px; border-radius: 4px; border: 1px solid #22c55e; }
+        .tier-badge { font-size: 0.65rem; padding: 2px 6px; border-radius: 4px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; }
+        .tier-1 { background: rgba(234, 179, 8, 0.2); color: #facc15; border: 1px solid #facc15; }
+        .tier-2 { background: rgba(156, 163, 175, 0.2); color: #d1d5db; border: 1px solid #9ca3af; }
+        .tier-3 { background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid #ef4444; }
+
+        /* Glitch Animations for Oracle Mode */
+        @keyframes glitch-anim {
+            0% { clip-path: inset(10% 0 80% 0); transform: translate(-2px, 2px); }
+            20% { clip-path: inset(80% 0 5% 0); transform: translate(2px, -2px); }
+            40% { clip-path: inset(40% 0 40% 0); transform: translate(-2px, 2px); }
+            60% { clip-path: inset(10% 0 60% 0); transform: translate(2px, -2px); }
+            80% { clip-path: inset(60% 0 10% 0); transform: translate(-2px, 2px); }
+            100% { clip-path: inset(30% 0 50% 0); transform: translate(0); }
+        }
+        .glitch-hover:hover .glitch-text { animation: glitch-anim 0.3s infinite; text-shadow: 2px 0 red, -2px 0 blue; }
     </style>
 </head>
 <body class="p-4 md:p-8">
     <div id="bg-layer"></div>
+    <div class="scanlines" id="scanlines"></div>
 
-    <div class="max-w-7xl mx-auto">
-        <header class="glass p-8 mb-8 text-center border-b-2" style="border-color: var(--accent)">
-            <h1 class="text-5xl font-black uppercase tracking-tighter mb-4 italic" style="color: var(--accent)">Chaos-Caster v4.3</h1>
+    <div id="app" class="max-w-7xl mx-auto">
+        
+        <header class="glass p-8 mb-8 text-center border-b-4 relative overflow-hidden" style="border-color: var(--accent)">
+            <h1 class="text-5xl font-black uppercase tracking-tighter mb-2" style="color: var(--accent); text-shadow: 0 0 20px var(--accent);">Chaos-Caster</h1>
+            <p class="text-xs text-gray-400 tracking-[0.3em] uppercase mb-6">GridRival Fantasy War Room // v5.0</p>
             
-            <div class="max-w-md mx-auto">
-                <input type="range" id="vibe" min="0" max="100" value="0" class="w-full h-3 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-blue-500">
-                <div class="flex justify-between text-[10px] font-black mt-2 text-gray-500 uppercase tracking-[0.2em]">
-                    <span>Engineering</span><span>The Paddock</span><span>The Oracle</span>
+            <div class="max-w-xl mx-auto mb-4">
+                <input type="range" id="vibe" min="0" max="100" value="0" class="w-full h-2 bg-gray-800 rounded-lg appearance-none cursor-pointer">
+                <div class="flex justify-between text-[10px] font-black mt-3 text-gray-500 uppercase tracking-widest">
+                    <span id="label-eng">Telemetry Log</span>
+                    <span id="label-pad">Paddock Rumor</span>
+                    <span id="label-ora">The Oracle</span>
                 </div>
             </div>
 
-            <div class="mt-6 flex justify-center gap-4">
-                <button id="boot" onclick="boot()" class="bg-blue-600 hover:bg-blue-400 text-white px-12 py-3 rounded-full font-black uppercase text-sm transition-all shadow-lg shadow-blue-900/40">Initialize Simulation</button>
+            <div id="boot-container" class="mt-8">
+                <button onclick="bootSystem()" class="bg-blue-600 hover:bg-blue-500 text-white px-12 py-4 rounded-sm font-black uppercase text-sm transition-all shadow-lg border border-blue-400">Initialize Data Link</button>
             </div>
-            <p id="status" class="text-[10px] mt-4 text-gray-400 font-mono uppercase tracking-widest">Awaiting local data recovery...</p>
+            <p id="status" class="text-[11px] mt-6 text-gray-500 font-mono uppercase tracking-widest">System Offline // Local Storage Available</p>
         </header>
 
-        <div class="flex flex-col lg:flex-row gap-8">
-            <div id="grid" class="w-full lg:w-2/3 grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+        <div id="dashboard" class="flex flex-col lg:flex-row gap-8 hidden">
+            
+            <div class="w-full lg:w-2/3">
+                <div class="flex justify-between items-end mb-4 border-b border-gray-800 pb-2">
+                    <h2 class="text-lg font-black uppercase tracking-widest">Driver Market</h2>
+                    <span class="text-xs text-gray-500 font-mono uppercase">Sort: Official Roster</span>
+                </div>
+                <div id="grid" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+            </div>
 
             <div class="w-full lg:w-1/3 space-y-6">
+                
                 <div class="glass p-6">
-                    <h2 class="text-xs font-black text-gray-400 uppercase mb-4 tracking-widest border-b border-gray-800 pb-2">Season Portfolio</h2>
-                    <div class="flex justify-between items-center mb-2">
-                        <span class="text-sm font-bold">Bank Balance</span>
-                        <span id="b-rem" class="text-3xl font-mono font-bold text-green-400">$100.0M</span>
-                    </div>
-                    <div class="flex justify-between items-center mb-6">
-                        <span class="text-sm text-gray-500">Squad Value</span>
-                        <span id="b-cost" class="text-xl font-mono text-white">$0.0M</span>
+                    <div class="flex justify-between items-center mb-6 border-b border-gray-800 pb-2">
+                        <h2 class="text-xs font-black text-gray-400 uppercase tracking-widest">Season Ledger</h2>
+                        <span class="text-[10px] bg-gray-800 px-2 py-1 rounded font-mono">Week <span id="race-week">1</span></span>
                     </div>
                     
-                    <div class="grid grid-cols-2 gap-2">
-                        <button onclick="simulateRace()" class="bg-red-600 hover:bg-red-500 text-white py-3 rounded font-black uppercase text-[10px] tracking-widest transition-all">Run Race</button>
-                        <button onclick="resetSystem()" class="bg-gray-800 hover:bg-gray-700 text-gray-300 py-3 rounded font-black uppercase text-[10px] tracking-widest transition-all">Hard Reset</button>
+                    <div class="mb-4">
+                        <div class="text-[10px] text-gray-500 uppercase tracking-widest mb-1">Available Capital</div>
+                        <div id="b-rem" class="text-4xl font-mono font-black text-green-400 drop-shadow-[0_0_10px_rgba(74,222,128,0.3)]">$100.0M</div>
+                    </div>
+                    
+                    <div class="flex justify-between items-center mb-6 bg-black/50 p-3 rounded">
+                        <span class="text-xs text-gray-400 uppercase tracking-widest">Squad Value</span>
+                        <span id="b-cost" class="text-lg font-mono text-white">$0.0M</span>
+                    </div>
+                    
+                    <div class="grid grid-cols-2 gap-3">
+                        <button onclick="simulateRace()" class="bg-red-900 hover:bg-red-700 text-red-100 py-3 rounded-sm font-black uppercase text-[10px] tracking-widest transition-all border border-red-500">Simulate Race</button>
+                        <button onclick="hardReset()" class="bg-transparent hover:bg-gray-800 text-gray-500 py-3 rounded-sm font-black uppercase text-[10px] tracking-widest transition-all border border-gray-700">Wipe Data</button>
                     </div>
                 </div>
 
                 <div class="glass p-6 sticky top-4">
                     <h2 class="text-xs font-black text-gray-400 uppercase mb-4 tracking-widest border-b border-gray-800 pb-2">
-                        Active Squad (<span id="s-count">0</span>/5)
+                        Active Contracts (<span id="s-count">0</span>/5)
                     </h2>
-                    <div id="s-list" class="space-y-3">
-                        <div class="text-center text-gray-600 py-10 text-[10px] uppercase tracking-widest">No Active Contracts</div>
-                    </div>
+                    <div id="s-list" class="space-y-3"></div>
                 </div>
+
             </div>
         </div>
     </div>
 
     <script>
-        // --- SYSTEM STATE ---
-        let state = { budget: 100.0, squad: [] };
+        // --- 1. PERSISTENCE & STATE MANAGEMENT ---
+        const STORAGE_KEY = 'chaos_caster_v5_vault';
+        let state = JSON.parse(localStorage.getItem(STORAGE_KEY)) || { 
+            budget: 100.0, 
+            squad: [], 
+            week: 1 
+        };
+        
         let drivers = [];
         let assets = { eng: [], pad: [], ora: [] };
 
-        // --- PERSISTENCE ---
         function saveState() {
-            localStorage.setItem('f1_chaos_caster_v4', JSON.stringify(state));
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
         }
 
-        function loadState() {
-            const saved = localStorage.getItem('f1_chaos_caster_v4');
-            if (saved) {
-                state = JSON.parse(saved);
-                document.getElementById('status').innerText = "Local Storage Recovered. Initializing...";
-            }
-        }
-
-        function resetSystem() {
-            if(confirm("Confirm Hard Reset? This will wipe your squad and reset budget to $100M.")) {
-                localStorage.removeItem('f1_chaos_caster_v4');
+        function hardReset() {
+            if(confirm("CRITICAL WARNING: This will terminate all contracts and reset your budget to $100M. Proceed?")) {
+                localStorage.removeItem(STORAGE_KEY);
                 location.reload();
             }
         }
 
-        // --- CORE ENGINE ---
-        async function boot() {
-            loadState();
-            document.getElementById('boot').classList.add('hidden');
+        // --- 2. THE DATA PIPELINE ---
+        async function bootSystem() {
+            document.getElementById('boot-container').classList.add('hidden');
+            document.getElementById('status').innerText = "Establishing Secure Telemetry Link...";
+            document.getElementById('dashboard').classList.remove('hidden');
             
             try {
-                // Fetch Driver Data
+                // Fetch Grid Ground Truth
                 const res = await fetch('https://api.openf1.org/v1/drivers');
                 const raw = await res.json();
+                
+                // Process and Tier Drivers
                 drivers = Array.from(new Set(raw.map(d => d.driver_number)))
                     .map(n => raw.find(d => d.driver_number === n))
-                    .slice(0, 20).map(d => ({
-                        ...d, 
-                        cost: calculateDriverPrice(d),
-                        team_colour: d.team_colour || '888888'
-                    }));
+                    .filter(d => d.last_name) // Remove empty entries
+                    .slice(0, 20).map(d => {
+                        const cost = calculateBaseCost(d);
+                        return {
+                            ...d, 
+                            cost: cost,
+                            tier: cost >= 22 ? 1 : (cost >= 14 ? 2 : 3),
+                            team_colour: d.team_colour || '555555',
+                            // Fallback image if OpenF1 headshot is null
+                            headshot: d.headshot_url || `https://ui-avatars.com/api/?name=${d.first_name}+${d.last_name}&background=${d.team_colour || '000'}&color=fff&size=200`
+                        };
+                    });
 
-                // Scrape Reddit for High-Fidelity Assets
-                const [eng, pad, ora] = await Promise.all([
-                    scrape(['F1Porn', 'f1technical']),
-                    scrape(['formula1', 'GrandPrixRacing']),
-                    scrape(['formuladank'])
+                // Background Reddit Asset Fetching (Tri-Tier)
+                document.getElementById('status').innerText = "Scraping Paddock Intel & Oracle Prophecies...";
+                const [pad, ora] = await Promise.all([
+                    scrapeReddit(['formula1', 'F1Porn']),
+                    scrapeReddit(['formuladank', 'f1circlejerk'])
                 ]);
+                assets.pad = pad; assets.ora = ora;
 
-                assets.eng = eng; assets.pad = pad; assets.ora = ora;
+                // Bind UI Event
+                document.getElementById('vibe').addEventListener('input', updateUI);
                 
-                // Background cycle
-                setInterval(cycleBackground, 12000);
-                update();
+                updateUI(); // First render
+                
             } catch (e) {
-                document.getElementById('status').innerText = "Critical Failure: Check Connection/CORS.";
+                document.getElementById('status').innerText = "CONNECTION FAILED. Operating on cached fallbacks.";
+                console.error(e);
             }
         }
 
-        function calculateDriverPrice(d) {
+        function calculateBaseCost(d) {
             const elites = ['Verstappen', 'Norris', 'Leclerc', 'Hamilton'];
-            if (elites.includes(d.last_name)) return 28.5;
-            if (d.team_name?.includes('McLaren') || d.team_name?.includes('Ferrari')) return 21.0;
-            return 8.5 + (d.driver_number % 7);
+            if (elites.includes(d.last_name)) return 26.0 + (d.driver_number % 3);
+            if (d.team_name?.includes('McLaren') || d.team_name?.includes('Ferrari') || d.team_name?.includes('Red Bull')) return 18.0 + (d.driver_number % 4);
+            return 8.5 + (d.driver_number % 5);
         }
 
-        async function scrape(subs) {
+        async function scrapeReddit(subs) {
             let posts = [];
             for (let s of subs) {
                 try {
-                    const r = await fetch(`https://api.allorigins.win/raw?url=https://www.reddit.com/r/${s}/hot.json?limit=30`);
+                    const r = await fetch(`https://api.allorigins.win/raw?url=https://www.reddit.com/r/${s}/hot.json?limit=25`);
                     const j = await r.json();
                     let valid = j.data.children
                         .filter(x => x.data.url.match(/\.(jpg|png|jpeg)$/i))
@@ -156,62 +228,106 @@
                     posts = posts.concat(valid);
                 } catch(e) {}
             }
-            return posts.length > 0 ? posts : [{u: 'https://images.unsplash.com/photo-1541336032412-2048a678540d', t: 'Fallback Signal'}];
+            return posts;
         }
 
-        function update() {
-            const v = document.getElementById('vibe').value;
-            const root = document.documentElement.style;
-            let pool = v < 34 ? assets.eng : (v < 67 ? assets.pad : assets.ora);
-            
-            // Dynamic UI Styling
-            if (v < 34) root.setProperty('--accent', '#3b82f6');
-            else if (v < 67) root.setProperty('--accent', '#ec4899');
-            else root.setProperty('--accent', '#22c55e');
+        // --- 3. THE SYNTHESIS ENGINE (Blurbs & UI) ---
+        function generateBlurb(driver, vibeLevel) {
+            const seed = driver.driver_number;
+            const loreDict = [
+                "Aero correlation issues in the wind tunnel.", "Complaining about tire temps.", 
+                "Sandbagging the speed trap.", "Simulator data implies +0.2s advantage.",
+                "Radio: 'The car is undriveable!'", "Spotted leaving the hospitality suite early."
+            ];
+            const baseLore = loreDict[seed % loreDict.length];
 
-            renderGrid(pool, v);
-            updateSquadUI();
-        }
-
-        function cycleBackground() {
-            const v = document.getElementById('vibe').value;
-            let arr = v < 34 ? assets.eng : (v < 67 ? assets.pad : assets.ora);
-            if (arr.length > 0) {
-                const img = arr[Math.floor(Math.random() * arr.length)];
-                document.getElementById('bg-layer').style.backgroundImage = `url(${img.u})`;
+            if (vibeLevel < 34) {
+                return `<span class="text-blue-400 font-bold">[LOG_DECRYPTED]:</span> ${baseLore} Cross-referencing Sector 2 telemetry.`;
+            } else if (vibeLevel < 67) {
+                const title = assets.pad.length ? assets.pad[seed % assets.pad.length].t : baseLore;
+                return `<span class="text-pink-400 italic">"Whisper: Heard in the paddock... ${title.substring(0, 50)}..."</span>`;
+            } else {
+                const title = assets.ora.length ? assets.ora[seed % assets.ora.length].t : "THE VOID CONSUMES ALL";
+                return `<span class="text-green-500 font-black glitch-text">!! THE PROPHECY !! ${title.toUpperCase()}</span>`;
             }
         }
 
-        function renderGrid(pool, v) {
+        function updateUI() {
+            const v = document.getElementById('vibe').value;
+            const root = document.documentElement.style;
+            const bodyStyle = document.body.style;
+            
+            let currentMode = 0; // 0=Eng, 1=Pad, 2=Ora
+
+            // Aesthetic Variables Dictionary applied dynamically
+            if (v < 34) {
+                root.setProperty('--accent', '#3b82f6'); // Blue
+                root.setProperty('--glass-bg', 'rgba(10, 15, 25, 0.9)');
+                root.setProperty('--font-main', "'Inter', sans-serif");
+                document.getElementById('scanlines').style.opacity = '0';
+                document.getElementById('bg-layer').style.filter = 'brightness(0.2) saturate(1)';
+            } else if (v < 67) {
+                currentMode = 1;
+                root.setProperty('--accent', '#ec4899'); // Pink
+                root.setProperty('--glass-bg', 'rgba(25, 10, 20, 0.85)');
+                root.setProperty('--font-main', "'Playfair Display', serif");
+                document.getElementById('scanlines').style.opacity = '0.3';
+                document.getElementById('bg-layer').style.filter = 'brightness(0.3) saturate(1.5) sepia(0.3)';
+            } else {
+                currentMode = 2;
+                root.setProperty('--accent', '#22c55e'); // Green
+                root.setProperty('--glass-bg', 'rgba(10, 25, 15, 0.8)');
+                root.setProperty('--font-main', "'Courier Prime', monospace");
+                document.getElementById('scanlines').style.opacity = '0.8';
+                document.getElementById('bg-layer').style.filter = 'brightness(0.4) saturate(2) contrast(1.2) hue-rotate(-20deg)';
+            }
+
+            renderGrid(currentMode, v);
+            renderSquad();
+        }
+
+        function renderGrid(mode, rawVibe) {
             const g = document.getElementById('grid');
+            
             g.innerHTML = drivers.map(d => {
-                const aIndex = (d.driver_number * 7) % pool.length;
-                const asset = pool[aIndex];
                 const isSelected = state.squad.includes(d.driver_number);
+                const blurb = generateBlurb(d, rawVibe);
                 
-                // V2 style blurb logic
-                const blurb = v > 66 
-                    ? `Oracle Verdict: "${asset.t}"` 
-                    : `Telemetry: P${(d.driver_number % 12) + 1} pace expected.`;
+                // Asset Logic (Waterfall: Official -> Search/Reddit Proxy)
+                let displayImage = d.headshot; 
+                if (mode === 1 && assets.pad.length) displayImage = assets.pad[(d.driver_number * 3) % assets.pad.length].u;
+                if (mode === 2 && assets.ora.length) displayImage = assets.ora[(d.driver_number * 7) % assets.ora.length].u;
+
+                // Market Sentiment (Hype Arrow)
+                const isSteal = d.tier === 3 && (d.driver_number % 2 === 0);
+                const hypeArrow = isSteal ? '<span class="trend-up ml-1">▲</span>' : '<span class="trend-down ml-1 text-gray-600">▼</span>';
 
                 return `
-                <div onclick="toggle(${d.driver_number})" class="glass p-4 flex items-center gap-4 driver-card ${isSelected?'selected':''}" style="border-left: 5px solid #${d.team_colour}">
-                    <img src="${asset.u}" class="w-16 h-16 rounded-full object-cover border border-gray-700 bg-gray-900 shadow-xl">
-                    <div class="flex-grow">
-                        <div class="flex justify-between items-start">
+                <div onclick="toggleContract(${d.driver_number})" class="glass p-4 flex items-center gap-4 driver-card ${isSelected?'selected':''} ${mode === 2 ? 'glitch-hover' : ''}" style="border-left: 5px solid #${d.team_colour}">
+                    <div class="relative min-w-[64px]">
+                        <img src="${displayImage}" class="w-16 h-16 rounded-sm object-cover border border-gray-700 bg-gray-900 z-10 relative shadow-xl" loading="lazy">
+                        ${mode === 2 ? `<div class="absolute inset-0 bg-green-500 opacity-20 mix-blend-overlay"></div>` : ''}
+                    </div>
+                    
+                    <div class="flex-grow min-w-0">
+                        <div class="flex justify-between items-start mb-1">
                             <div>
-                                <span class="text-[9px] font-black text-gray-500 uppercase tracking-widest">${d.team_name}</span>
-                                <h3 class="font-black text-lg leading-tight uppercase tracking-tighter">${d.last_name}</h3>
+                                <span class="text-[9px] font-black text-gray-500 uppercase tracking-widest block leading-none mb-1">${d.team_name}</span>
+                                <h3 class="font-bold text-lg leading-none uppercase tracking-tighter truncate">${d.last_name}</h3>
                             </div>
-                            <span class="cost-badge text-[10px] font-bold">$${d.cost.toFixed(1)}M</span>
+                            <div class="text-right">
+                                <span class="cost-badge text-[10px] font-bold block">$${d.cost.toFixed(1)}M ${hypeArrow}</span>
+                                <span class="tier-badge tier-${d.tier} mt-1 inline-block">Tier ${d.tier}</span>
+                            </div>
                         </div>
-                        <p class="text-[9px] text-gray-400 mt-2 italic leading-relaxed line-clamp-2 border-t border-gray-800 pt-2">${blurb}</p>
+                        <p class="text-[10px] text-gray-400 mt-2 leading-snug line-clamp-2 border-t border-gray-800/50 pt-2">${blurb}</p>
                     </div>
                 </div>`;
             }).join('');
         }
 
-        function updateSquadUI() {
+        // --- 4. GRIDRIVAL FINANCIAL LOGIC ---
+        function renderSquad() {
             const sl = document.getElementById('s-list');
             let currentTotalCost = 0;
             
@@ -220,352 +336,30 @@
                 if(!d) return '';
                 currentTotalCost += d.cost;
                 return `
-                <div class="flex justify-between items-center p-3 bg-black/60 rounded border-l-4 shadow-inner" style="border-color: #${d.team_colour}">
+                <div class="flex justify-between items-center p-3 bg-black/60 rounded-sm border-l-4 shadow-inner" style="border-color: #${d.team_colour}">
                     <div>
-                        <div class="text-[10px] font-black text-gray-500 uppercase">${d.last_name}</div>
-                        <div class="text-[8px] text-gray-600 uppercase tracking-widest">${d.team_name}</div>
+                        <div class="text-[11px] font-black text-gray-300 uppercase">${d.last_name}</div>
+                        <div class="text-[8px] text-gray-500 uppercase tracking-widest">${d.team_name}</div>
                     </div>
                     <span class="text-xs font-mono text-green-400 font-bold">$${d.cost.toFixed(1)}M</span>
                 </div>`;
-            }).join('') || '<div class="text-center text-gray-600 py-10 text-[10px] uppercase tracking-widest italic">Awaiting Roster Selections</div>';
+            }).join('') || '<div class="text-center text-gray-600 py-8 text-[10px] uppercase tracking-widest italic border border-dashed border-gray-800 rounded">No Active Signings</div>';
             
             document.getElementById('s-count').innerText = state.squad.length;
             document.getElementById('b-cost').innerText = `$${currentTotalCost.toFixed(1)}M`;
             document.getElementById('b-rem').innerText = `$${state.budget.toFixed(1)}M`;
-            document.getElementById('status').innerText = `System Live // Vibe: ${document.getElementById('vibe').value}% // Budget: $${state.budget.toFixed(1)}M`;
+            document.getElementById('race-week').innerText = state.week;
+            
+            // Status bar update
+            const v = document.getElementById('vibe').value;
+            const modeName = v < 34 ? "TELEMETRY" : (v < 67 ? "PADDOCK" : "ORACLE");
+            document.getElementById('status').innerText = `Uplink Active // Filter: ${modeName} // Vault Synced`;
         }
 
-        window.toggle = (n) => {
+        window.toggleContract = (n) => {
             const d = drivers.find(x => x.driver_number === n);
             const currentCost = state.squad.reduce((a, b) => a + (drivers.find(x => x.driver_number === b)?.cost || 0), 0);
             
             if (state.squad.includes(n)) {
-                state.squad = state.squad.filter(x => x !== n);
-            } else {
-                if (state.squad.length >= 5) return alert("MAX CAPACITY: 5 Drivers Per Squad.");
-                if (currentCost + d.cost > state.budget) return alert("BUDGET BREACH: Insufficient Capital.");
-                state.squad.push(n);
-            }
-            saveState();
-            update();
-        };
-
-        window.simulateRace = () => {
-            if(state.squad.length < 5) return alert("ERROR: Full squad required for race simulation.");
-            const swing = (Math.random() * 6) - 2.5; 
-            state.budget += swing;
-            saveState();
-            alert(`RACE COMPLETE: Your budget has shifted by $${swing.toFixed(1)}M based on squad performance.`);
-            update();
-        };
-
-        document.getElementById('vibe').addEventListener('input', update);
-    </script>
-</body>
-</html><!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>F1 GridRival Chaos-Caster V4 Final</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        :root {
-            --accent-color: #3b82f6; 
-            --panel-bg: rgba(15, 23, 42, 0.85);
-            --font-main: 'ui-sans-serif', system-ui, sans-serif;
-        }
-        
-        body {
-            font-family: var(--font-main);
-            margin: 0;
-            min-height: 100vh;
-            background-color: #000;
-            color: #fff;
-            overflow-x: hidden;
-            transition: font-family 0.3s ease;
-        }
-
-        #bg-layer {
-            position: fixed;
-            top: 0; left: 0; width: 100vw; height: 100vh;
-            background-size: cover;
-            background-position: center;
-            z-index: -1;
-            transition: background-image 1s ease-in-out, filter 0.5s ease;
-            filter: brightness(0.4);
-        }
-
-        .glass-panel {
-            background: var(--panel-bg);
-            backdrop-filter: blur(10px);
-            border: 1px solid var(--accent-color);
-            transition: all 0.3s ease;
-        }
-
-        input[type=range] {
-            accent-color: var(--accent-color);
-        }
-
-        .driver-card {
-            cursor: pointer;
-            transition: transform 0.2s, box-shadow 0.2s;
-        }
-        .driver-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 10px 20px rgba(0,0,0,0.5);
-        }
-        .selected-driver {
-            border: 2px solid var(--accent-color) !important;
-            background: rgba(255, 255, 255, 0.1);
-        }
-        .cost-tag {
-            background: rgba(0,0,0,0.6);
-            padding: 2px 8px;
-            border-radius: 4px;
-            font-family: monospace;
-            color: #4ade80;
-        }
-    </style>
-</head>
-<body class="p-6">
-
-    <div id="bg-layer"></div>
-
-    <div class="max-w-7xl mx-auto flex flex-col lg:flex-row gap-6">
-        
-        <div class="w-full lg:w-2/3">
-            <header class="glass-panel p-6 rounded-xl mb-6 text-center">
-                <h1 class="text-4xl font-extrabold mb-4 uppercase tracking-wider" style="color: var(--accent-color)">
-                    Chaos-Caster Engine
-                </h1>
-                
-                <div class="mb-4">
-                    <label class="block text-sm font-bold mb-2 uppercase tracking-widest text-gray-300">
-                        Vibe Level: <span id="vibe-label" class="text-white">0% (The Engineer)</span>
-                    </label>
-                    <input type="range" id="vibe-slider" min="0" max="100" value="0" class="w-full h-3 bg-gray-700 rounded-lg appearance-none cursor-pointer">
-                </div>
-                
-                <div class="flex justify-between text-xs text-gray-400 font-mono uppercase mb-6">
-                    <span>Pure Stats</span>
-                    <span>Hype / Lifestyle</span>
-                    <span>Reddit Chaos</span>
-                </div>
-
-                <button onclick="bootEngine()" id="boot-btn" class="px-8 py-3 rounded font-bold text-white uppercase tracking-wider transition-all hover:scale-105" style="background-color: var(--accent-color)">
-                    Initialize System
-                </button>
-                <div id="status" class="mt-4 font-mono text-sm text-gray-400 italic">Awaiting initialization...</div>
-            </header>
-
-            <div id="grid-results" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
-        </div>
-
-        <div class="w-full lg:w-1/3 space-y-6">
-            <div class="glass-panel p-6 rounded-xl">
-                <h2 class="text-xl font-bold uppercase mb-2 border-b border-gray-600 pb-2 text-gray-300">Season Portfolio</h2>
-                <div class="flex justify-between items-end mb-2">
-                    <span class="text-sm text-gray-400 uppercase">Available Budget</span>
-                    <span id="budget-display" class="text-3xl font-mono font-bold text-green-400">$100.0M</span>
-                </div>
-                <div class="flex justify-between items-end mb-4">
-                    <span class="text-sm text-gray-400 uppercase">Squad Cost</span>
-                    <span id="squad-cost-display" class="text-xl font-mono text-white">$0.0M</span>
-                </div>
-                <button onclick="processRace()" class="w-full bg-red-600 hover:bg-red-500 text-white font-bold py-2 rounded uppercase text-sm tracking-widest">
-                    🏁 Simulate Next Race
-                </button>
-            </div>
-
-            <div class="glass-panel p-6 rounded-xl sticky top-6">
-                <h2 class="text-2xl font-bold uppercase mb-2 border-b border-gray-600 pb-2" style="color: var(--accent-color)">
-                    Active Squad (<span id="squad-count">0</span>/5)
-                </h2>
-                <div class="flex justify-between items-end mb-4">
-                    <span class="text-sm text-gray-400 uppercase">Predicted Points</span>
-                    <span id="squad-total" class="text-4xl font-mono font-bold" style="color: var(--accent-color)">0.0</span>
-                </div>
-                <div id="squad-list" class="space-y-3">
-                    <div class="text-center text-gray-500 italic py-8">Initialize to build squad.</div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <script>
-        let state = { budget: 100.0, squad: [] };
-        let drivers = [];
-        let scoredDrivers = [];
-        let backgrounds = { engineer: [], paddock: [], oracle: [] };
-        let currentBgIndex = 0;
-
-        const slider = document.getElementById('vibe-slider');
-        const vibeLabel = document.getElementById('vibe-label');
-        const bgLayer = document.getElementById('bg-layer');
-        const rootStyles = document.documentElement.style;
-
-        slider.addEventListener('input', (e) => {
-            updateVibeState(parseInt(e.target.value));
-            if(drivers.length > 0) {
-                calculateScores();
-                renderDrivers();
-                renderSquad();
-            }
-        });
-
-        function updateVibeState(val) {
-            if (val < 34) {
-                vibeLabel.innerText = `${val}% (The Engineer)`;
-                rootStyles.setProperty('--accent-color', '#3b82f6');
-                rootStyles.setProperty('--panel-bg', 'rgba(15, 23, 42, 0.85)');
-                bgLayer.style.filter = "brightness(0.4) saturate(1)";
-            } else if (val < 67) {
-                vibeLabel.innerText = `${val}% (The Paddock)`;
-                rootStyles.setProperty('--accent-color', '#ec4899');
-                rootStyles.setProperty('--panel-bg', 'rgba(88, 28, 135, 0.80)');
-                bgLayer.style.filter = "brightness(0.5) saturate(1.5)";
-            } else {
-                vibeLabel.innerText = `${val}% (The Oracle)`;
-                rootStyles.setProperty('--accent-color', '#22c55e');
-                rootStyles.setProperty('--panel-bg', 'rgba(0, 0, 0, 0.90)');
-                bgLayer.style.filter = "brightness(0.6) contrast(1.2) saturate(2)";
-            }
-            cycleBackground();
-        }
-
-        async function bootEngine() {
-            document.getElementById('status').innerText = "Connecting to OpenF1...";
-            document.getElementById('boot-btn').style.display = 'none';
-            
-            try {
-                const dRes = await fetch('https://api.openf1.org/v1/drivers');
-                const rawDrivers = await dRes.json();
-                drivers = Array.from(new Set(rawDrivers.map(a => a.driver_number)))
-                    .map(num => rawDrivers.find(a => a.driver_number === num))
-                    .filter(d => d.driver_number).slice(0, 20);
-
-                // Assign Price Logic
-                drivers.forEach(d => {
-                    const top = ['Verstappen', 'Norris', 'Leclerc', 'Hamilton'];
-                    d.cost = top.includes(d.last_name) ? 28.5 : (d.driver_number % 2 === 0 ? 15.2 : 8.4);
-                });
-
-                document.getElementById('status').innerText = "Scraping Reddit Assets...";
-                const [eng, pad, ora] = await Promise.all([
-                    scrapeReddit(['F1Porn', 'f1technical']),
-                    scrapeReddit(['formula1', 'GrandPrixRacing']),
-                    scrapeReddit(['formuladank'])
-                ]);
-
-                backgrounds.engineer = eng; backgrounds.paddock = pad; backgrounds.oracle = ora;
-
-                document.getElementById('status').innerText = "Online.";
-                updateVibeState(slider.value);
-                calculateScores();
-                renderDrivers();
-                renderSquad();
-            } catch (err) {
-                document.getElementById('status').innerText = "Failed. Check CORS.";
-            }
-        }
-
-        async function scrapeReddit(subs) {
-            let posts = [];
-            for (let sub of subs) {
-                try {
-                    const res = await fetch(`https://api.allorigins.win/raw?url=https://www.reddit.com/r/${sub}/hot.json?limit=25`);
-                    const json = await res.json();
-                    let valid = json.data.children
-                        .filter(p => p.data.url.match(/\.(jpeg|jpg|png)$/i))
-                        .map(p => ({ url: p.data.url, title: p.data.title }));
-                    posts = posts.concat(valid);
-                } catch (e) {}
-            }
-            return posts.length > 0 ? posts : [{url: 'https://images.unsplash.com/photo-1614200187524-dc4b892acf16?q=80&w=1000', title: 'Default'}];
-        }
-
-        function cycleBackground() {
-            const val = parseInt(slider.value);
-            let arr = val < 34 ? backgrounds.engineer : (val < 67 ? backgrounds.paddock : backgrounds.oracle);
-            if (arr.length > 0) {
-                currentBgIndex = (currentBgIndex + 1) % arr.length;
-                bgLayer.style.backgroundImage = `url('${arr[currentBgIndex].url}')`;
-            }
-        }
-
-        function calculateScores() {
-            const val = parseInt(slider.value);
-            const V = val / 100.0;
-            scoredDrivers = drivers.map(d => {
-                let sBase = (35 - d.cost) * 2.5;
-                let sMeme = ((d.driver_number * 17) % 80) + 20;
-                let final = (sBase * (1 - V)) + (sMeme * V);
-                
-                let arr = val < 34 ? backgrounds.engineer : (val < 67 ? backgrounds.paddock : backgrounds.oracle);
-                let post = arr[(d.driver_number * 3) % arr.length];
-                let blurb = val > 66 ? `Reddit says: "${post.title}"` : `Statistically P${(d.driver_number % 10) + 1} pace predicted.`;
-
-                return { ...d, score: final, blurb: blurb, currentImg: post.url };
-            }).sort((a,b) => b.score - a.score);
-        }
-
-        window.toggleSquad = function(num) {
-            const d = scoredDrivers.find(x => x.driver_number === num);
-            const cost = state.squad.reduce((s, id) => s + scoredDrivers.find(x => x.driver_number === id).cost, 0);
-
-            if (state.squad.includes(num)) {
-                state.squad = state.squad.filter(id => id !== num);
-            } else {
-                if (state.squad.length >= 5) return alert("Full!");
-                if (cost + d.cost > state.budget) return alert("Too expensive!");
-                state.squad.push(num);
-            }
-            renderDrivers(); renderSquad(); updateBudgetDisplay();
-        }
-
-        function updateBudgetDisplay() {
-            document.getElementById('budget-display').innerText = `$${state.budget.toFixed(1)}M`;
-            const cost = state.squad.reduce((s, id) => s + scoredDrivers.find(x => x.driver_number === id).cost, 0);
-            document.getElementById('squad-cost-display').innerText = `$${cost.toFixed(1)}M`;
-        }
-
-        function renderDrivers() {
-            const grid = document.getElementById('grid-results');
-            grid.innerHTML = scoredDrivers.map(d => `
-                <div onclick="toggleSquad(${d.driver_number})" class="glass-panel driver-card p-4 rounded-xl flex items-center space-x-4 border-l-8 ${state.squad.includes(d.driver_number) ? 'selected-driver' : ''}" style="border-color: #${d.team_colour}">
-                    <img src="${d.currentImg}" class="w-16 h-16 rounded-full object-cover bg-gray-800 border">
-                    <div class="flex-grow">
-                        <div class="flex justify-between">
-                            <span class="text-[10px] text-gray-400 uppercase">${d.team_name}</span>
-                            <span class="cost-tag">$${d.cost}M</span>
-                        </div>
-                        <h3 class="font-bold">${d.full_name}</h3>
-                        <p class="text-[10px] italic text-gray-500">${d.blurb}</p>
-                    </div>
-                    <div class="text-right font-mono font-bold text-2xl" style="color: var(--accent-color)">${d.score.toFixed(0)}</div>
-                </div>
-            `).join('');
-        }
-
-        function renderSquad() {
-            document.getElementById('squad-count').innerText = state.squad.length;
-            const list = document.getElementById('squad-list');
-            let total = 0;
-            list.innerHTML = state.squad.map(id => {
-                const d = scoredDrivers.find(x => x.driver_number === id);
-                total += d.score;
-                return `<div class="bg-black p-2 rounded flex justify-between text-sm border border-gray-800">
-                    <span>${d.full_name}</span><span>${d.score.toFixed(0)}</span>
-                </div>`;
-            }).join('') || '<div class="text-center text-gray-500 italic py-8">Select 5 drivers</div>';
-            document.getElementById('squad-total').innerText = total.toFixed(0);
-        }
-
-        window.processRace = function() {
-            state.budget += (Math.random() * 4) - 1.5;
-            updateBudgetDisplay();
-            alert("Race complete! Budget updated.");
-        }
-    </script>
-</body>
-</html>
+                // Sell/Release contract
+                state.
