@@ -2,6 +2,258 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <title>F1 GridRival Chaos-Caster V4</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        :root {
+            --accent-color: #3b82f6; 
+            --panel-bg: rgba(15, 23, 42, 0.85);
+            --font-main: 'ui-sans-serif', system-ui, sans-serif;
+            --glitch-anim: none;
+        }
+        
+        body {
+            font-family: var(--font-main);
+            margin: 0;
+            min-height: 100vh;
+            background-color: #000;
+            color: #fff;
+            overflow-x: hidden;
+            transition: font-family 0.3s ease;
+        }
+
+        #bg-layer {
+            position: fixed;
+            top: 0; left: 0; width: 100vw; height: 100vh;
+            background-size: cover;
+            background-position: center;
+            z-index: -1;
+            transition: background-image 0.8s ease-in-out, filter 0.5s ease;
+            filter: brightness(0.3);
+        }
+
+        .glass-panel {
+            background: var(--panel-bg);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--accent-color);
+            transition: all 0.3s ease;
+            animation: var(--glitch-anim);
+        }
+
+        input[type=range] {
+            accent-color: var(--accent-color);
+            transition: accent-color 0.3s ease;
+        }
+
+        @keyframes glitch {
+            0% { transform: translate(0) }
+            20% { transform: translate(-2px, 2px) }
+            40% { transform: translate(-2px, -2px) }
+            60% { transform: translate(2px, 2px) }
+            80% { transform: translate(2px, -2px) }
+            100% { transform: translate(0) }
+        }
+
+        .driver-card {
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .driver-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.6);
+        }
+        .selected-driver {
+            border: 2px solid var(--accent-color) !important;
+            background: rgba(255, 255, 255, 0.1);
+        }
+        .locked-out {
+            opacity: 0.4;
+            pointer-events: none;
+            filter: grayscale(100%);
+        }
+        .cost-tag {
+            background: rgba(0,0,0,0.6);
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-family: monospace;
+            color: #4ade80;
+        }
+    </style>
+</head>
+<body class="p-4 md:p-6">
+
+    <div id="bg-layer"></div>
+
+    <div class="max-w-7xl mx-auto flex flex-col lg:flex-row gap-6">
+        
+        <div class="w-full lg:w-2/3">
+            <header class="glass-panel p-6 rounded-xl mb-6 text-center">
+                <div class="flex justify-between items-center mb-4">
+                    <h1 class="text-3xl md:text-4xl font-extrabold uppercase tracking-wider" style="color: var(--accent-color)">
+                        Chaos-Caster Engine
+                    </h1>
+                    <div class="flex gap-2">
+                        <button onclick="exportState()" class="bg-gray-700 hover:bg-gray-600 px-3 py-1 rounded text-xs uppercase font-bold">Export Save</button>
+                    </div>
+                </div>
+                
+                <div class="mb-4">
+                    <label class="block text-sm font-bold mb-2 uppercase tracking-widest text-gray-300">
+                        Vibe Level: <span id="vibe-label" class="text-white">0% (The Engineer)</span>
+                    </label>
+                    <input type="range" id="vibe-slider" min="0" max="100" value="0" class="w-full h-3 bg-gray-700 rounded-lg appearance-none cursor-pointer">
+                </div>
+                
+                <div class="flex justify-between text-xs text-gray-400 font-mono uppercase mb-6">
+                    <span>Pure Stats</span>
+                    <span>Paddock Rumors</span>
+                    <span>Reddit Chaos</span>
+                </div>
+
+                <button onclick="bootEngine()" id="boot-btn" class="px-8 py-3 rounded font-bold text-white uppercase tracking-wider transition-all hover:scale-105" style="background-color: var(--accent-color)">
+                    Initialize System
+                </button>
+                <div id="status" class="mt-4 font-mono text-sm text-yellow-400 italic">System offline. Ready for boot.</div>
+            </header>
+
+            <div id="grid-results" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                </div>
+        </div>
+
+        <div class="w-full lg:w-1/3 space-y-6">
+            
+            <div class="glass-panel p-6 rounded-xl">
+                <h2 class="text-xl font-bold uppercase mb-2 text-gray-300 border-b border-gray-600 pb-2">Season Portfolio</h2>
+                <div class="flex justify-between items-end mb-2">
+                    <span class="text-sm text-gray-400 uppercase">Available Budget</span>
+                    <span id="budget-display" class="text-3xl font-mono font-bold text-green-400">$100.0M</span>
+                </div>
+                <div class="flex justify-between items-end mb-4">
+                    <span class="text-sm text-gray-400 uppercase">Current Squad Cost</span>
+                    <span id="squad-cost-display" class="text-xl font-mono text-white">$0.0M</span>
+                </div>
+                <button onclick="processRace()" class="w-full mt-4 bg-red-600 hover:bg-red-500 text-white font-bold py-2 rounded uppercase text-sm tracking-widest transition-colors">
+                    🏁 Simulate Next Race
+                </button>
+            </div>
+
+            <div class="glass-panel p-6 rounded-xl sticky top-6">
+                <h2 class="text-2xl font-bold uppercase mb-2 border-b border-gray-600 pb-2" style="color: var(--accent-color)">
+                    Active Squad (<span id="squad-count">0</span>/5)
+                </h2>
+                <div class="flex justify-between items-end mb-4">
+                    <span class="text-sm text-gray-400 uppercase">Predicted Points</span>
+                    <span id="squad-total" class="text-4xl font-mono font-bold" style="color: var(--accent-color)">0.0</span>
+                </div>
+                
+                <div id="squad-list" class="space-y-3">
+                    <div class="text-center text-gray-500 italic py-8">Initialize system to load squad.</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- 1. STATE MANAGEMENT ---
+        let state = {
+            budget: 100.0,
+            squad: [], 
+            contracts: {}, 
+            lockout: []
+        };
+
+        // --- 2. SYSTEM VARIABLES ---
+        let drivers = [];
+        let scoredDrivers = [];
+        // Storing full post objects: { url: '', title: '' }
+        let backgrounds = { engineer: [], paddock: [], oracle: [] };
+        let currentBgIndex = 0;
+
+        const slider = document.getElementById('vibe-slider');
+        const vibeLabel = document.getElementById('vibe-label');
+        const bgLayer = document.getElementById('bg-layer');
+        const rootStyles = document.documentElement.style;
+
+        // Fallback Images in case Reddit proxy fails
+        const fallbackEng = [{url: 'https://images.unsplash.com/photo-1614200187524-dc4b892acf16?q=80&w=1000', title: 'Telemetry Data'}];
+        const fallbackPad = [{url: 'https://images.unsplash.com/photo-1541336032412-2048a678540d?q=80&w=1000', title: 'Paddock Walk'}];
+        const fallbackOra = [{url: 'https://images.unsplash.com/photo-1567808291543-b46ceeb0228a?q=80&w=1000', title: 'Reddit Chaos Unavailable'}];
+
+        // --- 3. CORE LOGIC ---
+        slider.addEventListener('input', (e) => {
+            updateVibeState(parseInt(e.target.value));
+            if(drivers.length > 0) {
+                calculateScores();
+                renderDrivers();
+            }
+        });
+
+        function updateVibeState(val) {
+            if (val < 34) {
+                vibeLabel.innerText = `${val}% (The Engineer)`;
+                rootStyles.setProperty('--accent-color', '#3b82f6');
+                rootStyles.setProperty('--panel-bg', 'rgba(15, 23, 42, 0.85)');
+                rootStyles.setProperty('--font-main', "'ui-sans-serif', system-ui, sans-serif");
+                bgLayer.style.filter = "brightness(0.3) saturate(1)";
+                setBackgroundImage(backgrounds.engineer);
+            } else if (val < 67) {
+                vibeLabel.innerText = `${val}% (The Paddock)`;
+                rootStyles.setProperty('--accent-color', '#ec4899');
+                rootStyles.setProperty('--panel-bg', 'rgba(88, 28, 135, 0.80)');
+                bgLayer.style.filter = "brightness(0.4) saturate(1.5)";
+                setBackgroundImage(backgrounds.paddock);
+            } else {
+                vibeLabel.innerText = `${val}% (The Oracle)`;
+                rootStyles.setProperty('--accent-color', '#22c55e');
+                rootStyles.setProperty('--panel-bg', 'rgba(0, 0, 0, 0.90)');
+                rootStyles.setProperty('--font-main', "'Courier New', monospace");
+                bgLayer.style.filter = "brightness(0.5) contrast(1.2) saturate(2)";
+                setBackgroundImage(backgrounds.oracle);
+            }
+        }
+
+        function setBackgroundImage(mediaArray) {
+            if (mediaArray && mediaArray.length > 0) {
+                currentBgIndex = (currentBgIndex + 1) % mediaArray.length;
+                bgLayer.style.backgroundImage = `url('${mediaArray[currentBgIndex].url}')`;
+            }
+        }
+
+        async function bootEngine() {
+            document.getElementById('status').innerText = "Connecting to OpenF1 API...";
+            document.getElementById('boot-btn').style.display = 'none';
+            
+            try {
+                // Load Base Drivers
+                const dRes = await fetch('https://api.openf1.org/v1/drivers');
+                const rawDrivers = await dRes.json();
+                drivers = Array.from(new Set(rawDrivers.map(a => a.driver_number)))
+                    .map(num => rawDrivers.find(a => a.driver_number === num))
+                    .filter(d => d.driver_number).slice(0, 20);
+
+                // Assign Base Cost Tiering
+                drivers.forEach(d => {
+                    const topTier = ['Verstappen', 'Norris', 'Leclerc', 'Hamilton'];
+                    const midTier = ['Sainz', 'Russell', 'Piastri', 'Perez', 'Alonso'];
+                    if (topTier.includes(d.last_name)) d.cost = 25.0 + (d.driver_number % 5);
+                    else if (midTier.includes(d.last_name)) d.cost = 18.0 + (d.driver_number % 4);
+                    else d.cost = 8.0 + (d.driver_number % 7);
+                });
+
+                document.getElementById('status').innerText = "Scraping Multi-Node Reddit Networks...";
+                
+                // Fetch images AND titles via CORS proxy
+                const [engBgs, padBgs, oraBgs] = await Promise.all([
+                    scrapeReddit(['F1Porn'], fallbackEng),
+                    scrapeReddit(['formula1', 'GrandPrixRacing'], fallbackPad),
+                    scrapeReddit(['formuladank'], fallbackOra)
+                ]);
+
+                backgrounds.engineer = engBgs;
+                background<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
     <title>F1 GridRival Chaos-Caster V3</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
