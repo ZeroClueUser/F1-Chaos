@@ -23,7 +23,6 @@
             transition: font-family 0.4s ease, background-color 0.4s ease;
         }
 
-        /* The Visual "Soul" Layers */
         #bg-layer { 
             position: fixed; top:0; left:0; width:100vw; height:100vh; z-index:-2; 
             background-size:cover; background-position:center; 
@@ -38,7 +37,6 @@
             opacity: 0; transition: opacity 0.5s ease; 
         }
 
-        /* Glassmorphism & Cards */
         .glass { 
             background: var(--glass-bg); 
             backdrop-filter: blur(16px); 
@@ -51,14 +49,12 @@
         .driver-card:hover { transform: translateY(-4px); background: rgba(255,255,255,0.05); }
         .selected { border: 2px solid var(--accent) !important; box-shadow: 0 0 25px var(--accent); background: rgba(255, 255, 255, 0.08); }
         
-        /* Badges & Text */
         .cost-badge { font-family: 'Courier Prime', monospace; color: #4ade80; background: #000; padding: 3px 8px; border-radius: 4px; border: 1px solid #22c55e; }
         .tier-badge { font-size: 0.65rem; padding: 2px 6px; border-radius: 4px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; }
         .tier-1 { background: rgba(234, 179, 8, 0.2); color: #facc15; border: 1px solid #facc15; }
         .tier-2 { background: rgba(156, 163, 175, 0.2); color: #d1d5db; border: 1px solid #9ca3af; }
         .tier-3 { background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid #ef4444; }
 
-        /* Glitch Animations for Oracle Mode */
         @keyframes glitch-anim {
             0% { clip-path: inset(10% 0 80% 0); transform: translate(-2px, 2px); }
             20% { clip-path: inset(80% 0 5% 0); transform: translate(2px, -2px); }
@@ -75,7 +71,6 @@
     <div class="scanlines" id="scanlines"></div>
 
     <div id="app" class="max-w-7xl mx-auto">
-        
         <header class="glass p-8 mb-8 text-center border-b-4 relative overflow-hidden" style="border-color: var(--accent)">
             <h1 class="text-5xl font-black uppercase tracking-tighter mb-2" style="color: var(--accent); text-shadow: 0 0 20px var(--accent);">Chaos-Caster</h1>
             <p class="text-xs text-gray-400 tracking-[0.3em] uppercase mb-6">GridRival Fantasy War Room // v5.0</p>
@@ -92,11 +87,10 @@
             <div id="boot-container" class="mt-8">
                 <button onclick="bootSystem()" class="bg-blue-600 hover:bg-blue-500 text-white px-12 py-4 rounded-sm font-black uppercase text-sm transition-all shadow-lg border border-blue-400">Initialize Data Link</button>
             </div>
-            <p id="status" class="text-[11px] mt-6 text-gray-500 font-mono uppercase tracking-widest">System Offline // Local Storage Available</p>
+            <p id="status" class="text-[11px] mt-6 text-gray-500 font-mono uppercase tracking-widest">System Offline // Awaiting Boot Sequence</p>
         </header>
 
         <div id="dashboard" class="flex flex-col lg:flex-row gap-8 hidden">
-            
             <div class="w-full lg:w-2/3">
                 <div class="flex justify-between items-end mb-4 border-b border-gray-800 pb-2">
                     <h2 class="text-lg font-black uppercase tracking-widest">Driver Market</h2>
@@ -106,23 +100,19 @@
             </div>
 
             <div class="w-full lg:w-1/3 space-y-6">
-                
                 <div class="glass p-6">
                     <div class="flex justify-between items-center mb-6 border-b border-gray-800 pb-2">
                         <h2 class="text-xs font-black text-gray-400 uppercase tracking-widest">Season Ledger</h2>
                         <span class="text-[10px] bg-gray-800 px-2 py-1 rounded font-mono">Week <span id="race-week">1</span></span>
                     </div>
-                    
                     <div class="mb-4">
                         <div class="text-[10px] text-gray-500 uppercase tracking-widest mb-1">Available Capital</div>
                         <div id="b-rem" class="text-4xl font-mono font-black text-green-400 drop-shadow-[0_0_10px_rgba(74,222,128,0.3)]">$100.0M</div>
                     </div>
-                    
                     <div class="flex justify-between items-center mb-6 bg-black/50 p-3 rounded">
                         <span class="text-xs text-gray-400 uppercase tracking-widest">Squad Value</span>
                         <span id="b-cost" class="text-lg font-mono text-white">$0.0M</span>
                     </div>
-                    
                     <div class="grid grid-cols-2 gap-3">
                         <button onclick="simulateRace()" class="bg-red-900 hover:bg-red-700 text-red-100 py-3 rounded-sm font-black uppercase text-[10px] tracking-widest transition-all border border-red-500">Simulate Race</button>
                         <button onclick="hardReset()" class="bg-transparent hover:bg-gray-800 text-gray-500 py-3 rounded-sm font-black uppercase text-[10px] tracking-widest transition-all border border-gray-700">Wipe Data</button>
@@ -135,78 +125,99 @@
                     </h2>
                     <div id="s-list" class="space-y-3"></div>
                 </div>
-
             </div>
         </div>
     </div>
 
     <script>
-        // --- 1. PERSISTENCE & STATE MANAGEMENT ---
+        // --- 1. SAFE STATE MANAGEMENT ---
         const STORAGE_KEY = 'chaos_caster_v5_vault';
-        let state = JSON.parse(localStorage.getItem(STORAGE_KEY)) || { 
-            budget: 100.0, 
-            squad: [], 
-            week: 1 
-        };
+        let state = { budget: 100.0, squad: [], week: 1 };
+        
+        // Wrapped in try/catch to prevent privacy browsers (Brave/Chrome Strict) from crashing the JS
+        try {
+            const saved = localStorage.getItem(STORAGE_KEY);
+            if (saved) state = JSON.parse(saved);
+        } catch (e) {
+            console.warn("Storage blocked by privacy shields. Running in volatile memory mode.");
+        }
         
         let drivers = [];
         let assets = { eng: [], pad: [], ora: [] };
 
         function saveState() {
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+            try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } 
+            catch (e) { /* Ignore if blocked */ }
         }
 
         function hardReset() {
             if(confirm("CRITICAL WARNING: This will terminate all contracts and reset your budget to $100M. Proceed?")) {
-                localStorage.removeItem(STORAGE_KEY);
+                try { localStorage.removeItem(STORAGE_KEY); } catch(e){}
                 location.reload();
             }
         }
 
-        // --- 2. THE DATA PIPELINE ---
+        // --- 2. BULLETPROOF DATA PIPELINE ---
         async function bootSystem() {
+            // Hide button and show dashboard immediately to prove UI isn't hanging
             document.getElementById('boot-container').classList.add('hidden');
-            document.getElementById('status').innerText = "Establishing Secure Telemetry Link...";
             document.getElementById('dashboard').classList.remove('hidden');
+            document.getElementById('status').innerText = "Establishing Secure Telemetry Link...";
+            
+            let rawDrivers = [];
             
             try {
                 // Fetch Grid Ground Truth
                 const res = await fetch('https://api.openf1.org/v1/drivers');
-                const raw = await res.json();
-                
-                // Process and Tier Drivers
-                drivers = Array.from(new Set(raw.map(d => d.driver_number)))
-                    .map(n => raw.find(d => d.driver_number === n))
-                    .filter(d => d.last_name) // Remove empty entries
-                    .slice(0, 20).map(d => {
-                        const cost = calculateBaseCost(d);
-                        return {
-                            ...d, 
-                            cost: cost,
-                            tier: cost >= 22 ? 1 : (cost >= 14 ? 2 : 3),
-                            team_colour: d.team_colour || '555555',
-                            // Fallback image if OpenF1 headshot is null
-                            headshot: d.headshot_url || `https://ui-avatars.com/api/?name=${d.first_name}+${d.last_name}&background=${d.team_colour || '000'}&color=fff&size=200`
-                        };
-                    });
+                if(!res.ok) throw new Error("API Offline");
+                rawDrivers = await res.json();
+            } catch (e) {
+                // FALLBACK ROSTER if browser blocks the API or API is down
+                document.getElementById('status').innerText = "API BLOCKED. Initializing Offline Simulation Roster...";
+                rawDrivers = [
+                    { driver_number: 1, last_name: 'Verstappen', team_name: 'Red Bull Racing', team_colour: '3671C6' },
+                    { driver_number: 4, last_name: 'Norris', team_name: 'McLaren', team_colour: 'FF8000' },
+                    { driver_number: 16, last_name: 'Leclerc', team_name: 'Ferrari', team_colour: 'E8002D' },
+                    { driver_number: 44, last_name: 'Hamilton', team_name: 'Ferrari', team_colour: 'E8002D' },
+                    { driver_number: 81, last_name: 'Piastri', team_name: 'McLaren', team_colour: 'FF8000' },
+                    { driver_number: 63, last_name: 'Russell', team_name: 'Mercedes', team_colour: '27F4D2' },
+                    { driver_number: 14, last_name: 'Alonso', team_name: 'Aston Martin', team_colour: '229971' },
+                    { driver_number: 55, last_name: 'Sainz', team_name: 'Williams', team_colour: '37BEDD' },
+                    { driver_number: 22, last_name: 'Tsunoda', team_name: 'RB', team_colour: '6692FF' },
+                    { driver_number: 27, last_name: 'Hulkenberg', team_name: 'Haas', team_colour: 'B6BABD' }
+                ];
+            }
 
-                // Background Reddit Asset Fetching (Tri-Tier)
-                document.getElementById('status').innerText = "Scraping Paddock Intel & Oracle Prophecies...";
+            // Process and Tier Drivers
+            drivers = Array.from(new Set(rawDrivers.map(d => d.driver_number)))
+                .map(n => rawDrivers.find(d => d.driver_number === n))
+                .filter(d => d && d.last_name) 
+                .slice(0, 20).map(d => {
+                    const cost = calculateBaseCost(d);
+                    return {
+                        ...d, 
+                        cost: cost,
+                        tier: cost >= 22 ? 1 : (cost >= 14 ? 2 : 3),
+                        team_colour: d.team_colour || '555555',
+                        headshot: d.headshot_url || `https://ui-avatars.com/api/?name=${d.first_name || d.last_name}+${d.last_name}&background=${d.team_colour || '000'}&color=fff&size=200`
+                    };
+                });
+
+            try {
+                // Background Reddit Asset Fetching
+                document.getElementById('status').innerText = "Scraping Paddock Intel...";
                 const [pad, ora] = await Promise.all([
                     scrapeReddit(['formula1', 'F1Porn']),
                     scrapeReddit(['formuladank', 'f1circlejerk'])
                 ]);
                 assets.pad = pad; assets.ora = ora;
-
-                // Bind UI Event
-                document.getElementById('vibe').addEventListener('input', updateUI);
-                
-                updateUI(); // First render
-                
-            } catch (e) {
-                document.getElementById('status').innerText = "CONNECTION FAILED. Operating on cached fallbacks.";
-                console.error(e);
+            } catch(e) {
+                console.warn("Reddit Scrapers Blocked. Proceeding with generative text.");
             }
+
+            // Bind UI Event & Render
+            document.getElementById('vibe').addEventListener('input', updateUI);
+            updateUI(); 
         }
 
         function calculateBaseCost(d) {
@@ -220,7 +231,8 @@
             let posts = [];
             for (let s of subs) {
                 try {
-                    const r = await fetch(`https://api.allorigins.win/raw?url=https://www.reddit.com/r/${s}/hot.json?limit=25`);
+                    const r = await fetch(`https://api.allorigins.win/raw?url=https://www.reddit.com/r/${s}/hot.json?limit=15`);
+                    if(!r.ok) continue;
                     const j = await r.json();
                     let valid = j.data.children
                         .filter(x => x.data.url.match(/\.(jpg|png|jpeg)$/i))
@@ -237,7 +249,8 @@
             const loreDict = [
                 "Aero correlation issues in the wind tunnel.", "Complaining about tire temps.", 
                 "Sandbagging the speed trap.", "Simulator data implies +0.2s advantage.",
-                "Radio: 'The car is undriveable!'", "Spotted leaving the hospitality suite early."
+                "Radio: 'The car is undriveable!'", "Spotted leaving the hospitality suite early.",
+                "Contract rumors intensify ahead of FP1.", "Floor upgrade showing massive downforce gains."
             ];
             const baseLore = loreDict[seed % loreDict.length];
 
@@ -247,7 +260,7 @@
                 const title = assets.pad.length ? assets.pad[seed % assets.pad.length].t : baseLore;
                 return `<span class="text-pink-400 italic">"Whisper: Heard in the paddock... ${title.substring(0, 50)}..."</span>`;
             } else {
-                const title = assets.ora.length ? assets.ora[seed % assets.ora.length].t : "THE VOID CONSUMES ALL";
+                const title = assets.ora.length ? assets.ora[seed % assets.ora.length].t : "THE VOID CONSUMES ALL REASON.";
                 return `<span class="text-green-500 font-black glitch-text">!! THE PROPHECY !! ${title.toUpperCase()}</span>`;
             }
         }
@@ -255,27 +268,25 @@
         function updateUI() {
             const v = document.getElementById('vibe').value;
             const root = document.documentElement.style;
-            const bodyStyle = document.body.style;
             
-            let currentMode = 0; // 0=Eng, 1=Pad, 2=Ora
+            let currentMode = 0; 
 
-            // Aesthetic Variables Dictionary applied dynamically
             if (v < 34) {
-                root.setProperty('--accent', '#3b82f6'); // Blue
+                root.setProperty('--accent', '#3b82f6'); 
                 root.setProperty('--glass-bg', 'rgba(10, 15, 25, 0.9)');
                 root.setProperty('--font-main', "'Inter', sans-serif");
                 document.getElementById('scanlines').style.opacity = '0';
                 document.getElementById('bg-layer').style.filter = 'brightness(0.2) saturate(1)';
             } else if (v < 67) {
                 currentMode = 1;
-                root.setProperty('--accent', '#ec4899'); // Pink
+                root.setProperty('--accent', '#ec4899'); 
                 root.setProperty('--glass-bg', 'rgba(25, 10, 20, 0.85)');
                 root.setProperty('--font-main', "'Playfair Display', serif");
                 document.getElementById('scanlines').style.opacity = '0.3';
                 document.getElementById('bg-layer').style.filter = 'brightness(0.3) saturate(1.5) sepia(0.3)';
             } else {
                 currentMode = 2;
-                root.setProperty('--accent', '#22c55e'); // Green
+                root.setProperty('--accent', '#22c55e'); 
                 root.setProperty('--glass-bg', 'rgba(10, 25, 15, 0.8)');
                 root.setProperty('--font-main', "'Courier Prime', monospace");
                 document.getElementById('scanlines').style.opacity = '0.8';
@@ -293,14 +304,12 @@
                 const isSelected = state.squad.includes(d.driver_number);
                 const blurb = generateBlurb(d, rawVibe);
                 
-                // Asset Logic (Waterfall: Official -> Search/Reddit Proxy)
                 let displayImage = d.headshot; 
                 if (mode === 1 && assets.pad.length) displayImage = assets.pad[(d.driver_number * 3) % assets.pad.length].u;
                 if (mode === 2 && assets.ora.length) displayImage = assets.ora[(d.driver_number * 7) % assets.ora.length].u;
 
-                // Market Sentiment (Hype Arrow)
                 const isSteal = d.tier === 3 && (d.driver_number % 2 === 0);
-                const hypeArrow = isSteal ? '<span class="trend-up ml-1">▲</span>' : '<span class="trend-down ml-1 text-gray-600">▼</span>';
+                const hypeArrow = isSteal ? '<span class="trend-up ml-1 text-green-400">▲</span>' : '<span class="trend-down ml-1 text-red-500">▼</span>';
 
                 return `
                 <div onclick="toggleContract(${d.driver_number})" class="glass p-4 flex items-center gap-4 driver-card ${isSelected?'selected':''} ${mode === 2 ? 'glitch-hover' : ''}" style="border-left: 5px solid #${d.team_colour}">
@@ -326,7 +335,6 @@
             }).join('');
         }
 
-        // --- 4. GRIDRIVAL FINANCIAL LOGIC ---
         function renderSquad() {
             const sl = document.getElementById('s-list');
             let currentTotalCost = 0;
@@ -350,10 +358,9 @@
             document.getElementById('b-rem').innerText = `$${state.budget.toFixed(1)}M`;
             document.getElementById('race-week').innerText = state.week;
             
-            // Status bar update
             const v = document.getElementById('vibe').value;
             const modeName = v < 34 ? "TELEMETRY" : (v < 67 ? "PADDOCK" : "ORACLE");
-            document.getElementById('status').innerText = `Uplink Active // Filter: ${modeName} // Vault Synced`;
+            document.getElementById('status').innerText = `Uplink Active // Filter: ${modeName} // Security Overrides Engaged`;
         }
 
         window.toggleContract = (n) => {
@@ -361,5 +368,27 @@
             const currentCost = state.squad.reduce((a, b) => a + (drivers.find(x => x.driver_number === b)?.cost || 0), 0);
             
             if (state.squad.includes(n)) {
-                // Sell/Release contract
-                state.
+                state.squad = state.squad.filter(x => x !== n);
+            } else {
+                if (state.squad.length >= 5) return alert("FIA REGULATION BREACH: Maximum 5 drivers allowed per squad.");
+                if (currentCost + d.cost > state.budget) return alert("FINANCIAL FAIR PLAY BREACH: Insufficient Capital to execute contract.");
+                state.squad.push(n);
+            }
+            saveState(); 
+            updateUI();
+        };
+
+        window.simulateRace = () => {
+            if(state.squad.length < 5) return alert("RACE CONTROL: Full 5-driver grid required to begin simulation.");
+            const marketSwing = (Math.random() * 8) - 3.5; 
+            state.budget += marketSwing;
+            state.week += 1;
+            saveState(); 
+            const resultText = marketSwing >= 0 ? `PROFIT: +$${marketSwing.toFixed(1)}M` : `LOSS: -$${Math.abs(marketSwing).toFixed(1)}M`;
+            alert(`RACE WEEK ${state.week - 1} COMPLETE.\nMarket Sentiment Shifted.\nNet Portfolio Change: ${resultText}`);
+            updateUI();
+        };
+
+    </script>
+</body>
+</html>
