@@ -3,244 +3,298 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chaos-Caster v7.0 | Full API Integration</title>
+    <title>Chaos-Caster v8.0 | The Complete Vision</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Courier+Prime:ital,wght@0,400;0,700;1,400&family=Inter:wght@400;700;900&family=Playfair+Display:ital,wght@0,700;1,700&display=swap" rel="stylesheet">
     <style>
-        :root { --accent: #3b82f6; --bg: #050505; --glass: rgba(10, 15, 25, 0.9); }
-        body { background: var(--bg); color: #fff; font-family: 'Inter', sans-serif; transition: all 0.4s ease; }
-        .glass { background: var(--glass); backdrop-filter: blur(12px); border: 1px solid var(--accent); border-radius: 4px; }
-        .scanlines { position: fixed; inset: 0; background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06)); background-size: 100% 4px, 3px 100%; z-index: 50; pointer-events: none; opacity: 0; }
-        .driver-card { transition: 0.2s; cursor: pointer; border-left: 4px solid var(--accent); }
-        .driver-card:hover { background: rgba(255,255,255,0.05); transform: translateX(4px); }
-        .selected { background: rgba(59, 130, 246, 0.15) !important; box-shadow: 0 0 15px var(--accent); border-width: 2px; }
-        .glitch { animation: glitch 0.3s infinite; }
-        @keyframes glitch { 0% { transform: translate(0); } 20% { transform: translate(-2px, 2px); } 40% { transform: translate(-2px, -2px); } 60% { transform: translate(2px, 2px); } 80% { transform: translate(2px, -2px); } 100% { transform: translate(0); } }
+        :root { --accent: #3b82f6; --glass: rgba(5, 5, 5, 0.85); --font: 'Inter'; }
+        body { 
+            background-color: #050505; color: #fff; font-family: var(--font); 
+            transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+            background-size: cover; background-attachment: fixed; background-position: center;
+        }
+        .glass { background: var(--glass); backdrop-filter: blur(20px); border: 1px solid var(--accent); }
+        .driver-card { transition: 0.3s; border-left: 5px solid var(--accent); cursor: pointer; }
+        .driver-card:hover { transform: scale(1.02); background: rgba(255,255,255,0.05); }
+        .selected { border: 2px solid var(--accent) !important; box-shadow: 0 0 20px var(--accent); background: rgba(255,255,255,0.1) !important; }
+        
+        .scanlines { position: fixed; inset: 0; pointer-events: none; z-index: 99; opacity: 0; transition: 0.5s;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.05), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.05));
+            background-size: 100% 3px, 3px 100%; }
+
+        @keyframes glitch { 
+            0% { transform: translate(0); } 20% { transform: translate(-3px, 2px); } 
+            40% { transform: translate(-3px, -2px); } 60% { transform: translate(3px, 2px); } 
+            80% { transform: translate(3px, -2px); } 100% { transform: translate(0); }
+        }
+        .glitch-active { animation: glitch 0.2s infinite; }
+        .term-icon { width: 24px; height: 24px; object-fit: contain; }
     </style>
 </head>
 <body class="p-4 md:p-8 min-h-screen">
     <div id="scanlines" class="scanlines"></div>
 
-    <div class="max-w-6xl mx-auto">
-        <header class="glass p-6 mb-8 flex flex-col md:flex-row justify-between items-center gap-6">
+    <div class="max-w-7xl mx-auto">
+        <header class="glass p-6 mb-8 flex flex-col md:flex-row justify-between items-center gap-6 border-b-4" style="border-color: var(--accent)">
             <div>
-                <h1 id="main-title" class="text-4xl font-black uppercase tracking-tighter" style="color: var(--accent)">Chaos-Caster Engine</h1>
-                <p id="sub-title" class="text-[10px] tracking-[0.3em] uppercase opacity-50">GridRival War Room // Live API Linked</p>
+                <h1 id="ui-title" class="text-5xl font-black uppercase tracking-tighter" style="color: var(--accent)">Chaos-Caster</h1>
+                <p id="ui-subtitle" class="text-[10px] tracking-[0.4em] uppercase opacity-60">GridRival Simulation Engine v8.0</p>
             </div>
-            <div class="flex gap-3">
-                <button onclick="bootSystem()" id="boot-btn" class="bg-blue-600 px-8 py-3 font-black uppercase text-xs hover:bg-blue-500 transition-all">Initialize Data Link</button>
-                <div id="save-tools" class="hidden flex gap-2">
-                    <button onclick="exportSave()" class="border border-gray-700 px-4 py-2 text-[10px] uppercase font-bold hover:bg-gray-800">Export</button>
-                    <button onclick="importSave()" class="border border-gray-700 px-4 py-2 text-[10px] uppercase font-bold hover:bg-gray-800">Import</button>
-                </div>
+            
+            <div id="boot-box" class="flex gap-3">
+                <button onclick="boot()" class="bg-blue-600 hover:bg-blue-500 px-10 py-4 font-black uppercase text-xs transition-all shadow-lg">Connect Intelligence</button>
+            </div>
+            
+            <div id="save-box" class="hidden flex gap-2">
+                <button onclick="exportS()" class="border border-gray-700 p-2 text-[10px] font-bold uppercase hover:bg-white/10">Export Save</button>
+                <button onclick="importS()" class="border border-gray-700 p-2 text-[10px] font-bold uppercase hover:bg-white/10">Import Save</button>
             </div>
         </header>
 
-        <div id="main-ui" class="hidden grid grid-cols-1 lg:grid-cols-12 gap-8">
+        <div id="dash" class="hidden grid grid-cols-1 lg:grid-cols-12 gap-8">
             
             <div class="lg:col-span-8">
-                <div class="glass p-4 mb-6">
-                    <input type="range" id="vibe-slider" min="0" max="100" value="0" class="w-full accent-blue-600">
-                    <div class="flex justify-between text-[9px] font-bold uppercase mt-2 opacity-60">
-                        <span>Telemetry</span>
-                        <span>Paddock Rumor</span>
-                        <span>The Oracle</span>
+                <div class="glass p-6 mb-8">
+                    <input type="range" id="slider" min="0" max="100" value="0" class="w-full accent-blue-600">
+                    <div class="flex justify-between text-[10px] font-black uppercase mt-4 opacity-70 tracking-widest">
+                        <span id="label-low">Telemetry (Technical)</span>
+                        <span id="label-mid">Paddock (Prestige)</span>
+                        <span id="label-high">The Oracle (Chaos)</span>
                     </div>
                 </div>
 
-                <div class="flex justify-between items-end border-b border-gray-800 mb-4 pb-2">
-                    <h2 class="font-black uppercase tracking-widest text-sm">Driver Market</h2>
-                    <div id="api-status" class="text-[9px] font-mono text-yellow-500 uppercase">Connecting to OpenF1...</div>
+                <div class="flex justify-between items-end border-b border-gray-800 pb-2 mb-6">
+                    <h2 class="font-black uppercase tracking-widest text-lg" id="ui-market-label">Driver Roster</h2>
+                    <div id="api-status" class="text-[9px] font-mono text-blue-400 uppercase">Synchronizing...</div>
                 </div>
-                <div id="driver-grid" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+
+                <div id="market-grid" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
             </div>
 
             <div class="lg:col-span-4 space-y-6">
-                <div class="glass p-6 border-t-4 border-green-500">
-                    <h3 class="text-[10px] uppercase tracking-widest opacity-60 mb-1">Available Capital</h3>
-                    <div id="display-budget" class="text-5xl font-mono font-black text-green-400 mb-4">$100.0M</div>
+                <div class="glass p-6 border-t-8 border-green-500">
+                    <h3 class="text-[10px] uppercase tracking-[0.2em] font-black opacity-50 mb-1" id="ui-budget-label">Available Capital</h3>
+                    <div id="budget-val" class="text-5xl font-mono font-black text-green-400 mb-6 tracking-tighter">$100.0M</div>
                     
-                    <div class="bg-black/40 p-3 rounded mb-6 flex justify-between items-center border border-gray-800">
-                        <span class="text-[10px] uppercase opacity-50">Squad Value</span>
-                        <span id="display-cost" class="font-mono font-bold">$0.0M</span>
+                    <div class="bg-black/60 p-4 rounded mb-6 border border-gray-800 flex justify-between items-center">
+                        <span class="text-[10px] uppercase font-bold opacity-40" id="ui-cost-label">Total Investment</span>
+                        <span id="cost-val" class="font-mono text-xl font-bold">$0.0M</span>
                     </div>
 
-                    <button onclick="simRace()" class="w-full bg-red-700 hover:bg-red-600 py-4 font-black uppercase tracking-tighter text-sm mb-2">Simulate Next Race</button>
-                    <button onclick="resetData()" class="w-full text-[9px] uppercase opacity-40 hover:opacity-100 transition-all">Factory Reset System</button>
+                    <button onclick="simulate()" id="ui-sim-btn" class="w-full bg-red-600 hover:bg-red-500 py-5 font-black uppercase text-sm tracking-widest shadow-xl transition-all mb-4">Execute Race Simulation</button>
+                    <button onclick="wipe()" class="w-full text-[9px] uppercase opacity-30 hover:opacity-100 hover:text-red-400">Purge Local Data</button>
                 </div>
 
                 <div class="glass p-6">
-                    <h3 class="text-xs font-black uppercase mb-4 border-b border-gray-800 pb-2">Active Squad (<span id="squad-count">0</span>/5)</h3>
+                    <h3 class="text-xs font-black uppercase mb-6 border-b border-gray-800 pb-2 flex justify-between">
+                        <span id="ui-squad-label">Active Squad</span> 
+                        <span class="font-mono text-blue-400" id="squad-count">0/5</span>
+                    </h3>
                     <div id="squad-list" class="space-y-3"></div>
                 </div>
             </div>
+
         </div>
     </div>
 
     <script>
-        const KEY = 'CC_v7_DATA';
+        // --- 1. THE DICTIONARY & ASSETS ---
+        const DICT = {
+            0: { title: "Chaos-Caster // TEL", market: "Driver Roster", budget: "Available Capital", cost: "Total Investment", sim: "Execute Race Run", squad: "Telemetry Unit", term: "Contract", attr_img: "https://cdn-icons-png.flaticon.com/512/1152/1152912.png" },
+            1: { title: "Chaos-Caster // PAD", market: "Paddock Elite", budget: "Market Liquidity", cost: "Prestige Value", sim: "Next Grand Prix", squad: "Inner Circle", term: "Market", attr_img: "https://cdn-icons-png.flaticon.com/512/2950/2950150.png" },
+            2: { title: "Chaos-Caster // ORC", market: "The Damned", budget: "Void Essence", cost: "Sacrifice Price", sim: "INITIATE DOOMSDAY", squad: "Cursed Entities", term: "Bounty", attr_img: "https://cdn-icons-png.flaticon.com/512/1041/1041844.png" }
+        };
+
+        const BGS = {
+            0: "https://images.unsplash.com/photo-1550751827-4bd374c3f58b?q=80&w=2070", // Technical
+            1: "https://images.unsplash.com/photo-1513151233558-d860c5398176?q=80&w=2070", // Paddock Lux
+            2: "https://images.unsplash.com/photo-1614064641938-3bbee52942c7?q=80&w=2070"  // Hacker Chaos
+        };
+
+        // --- 2. THE STATE ---
         let state = { budget: 100.0, squad: [], week: 1 };
+        const KEY = 'CHAOS_CASTER_V8_STATE';
+
         let drivers = [
-            { id: 1, name: 'Verstappen', team: 'Red Bull', cost: 28.5, color: '#3671C6', abbr: 'VER' },
-            { id: 4, name: 'Norris', team: 'McLaren', cost: 26.0, color: '#FF8000', abbr: 'NOR' },
-            { id: 16, name: 'Leclerc', team: 'Ferrari', cost: 24.5, color: '#E8002D', abbr: 'LEC' },
-            { id: 44, name: 'Hamilton', team: 'Ferrari', cost: 23.0, color: '#E8002D', abbr: 'HAM' },
-            { id: 81, name: 'Piastri', team: 'McLaren', cost: 21.5, color: '#FF8000', abbr: 'PIA' },
-            { id: 63, name: 'Russell', team: 'Mercedes', cost: 19.0, color: '#27F4D2', abbr: 'RUS' },
-            { id: 14, name: 'Alonso', team: 'Aston Martin', cost: 15.0, color: '#229971', abbr: 'ALO' },
-            { id: 55, name: 'Sainz', team: 'Williams', cost: 14.5, color: '#37BEDD', abbr: 'SAI' },
-            { id: 11, name: 'Perez', team: 'Red Bull', cost: 14.0, color: '#3671C6', abbr: 'PER' },
-            { id: 23, name: 'Albon', team: 'Williams', cost: 9.5, color: '#37BEDD', abbr: 'ALB' }
+            { id: 1, name: 'Verstappen', team: 'Red Bull', cost: 28.5, color: '#3671C6', abbr: 'VER', f1id: 'max_verstappen' },
+            { id: 4, name: 'Norris', team: 'McLaren', cost: 26.0, color: '#FF8000', abbr: 'NOR', f1id: 'lando_norris' },
+            { id: 16, name: 'Leclerc', team: 'Ferrari', cost: 24.5, color: '#E8002D', abbr: 'LEC', f1id: 'charles_leclerc' },
+            { id: 44, name: 'Hamilton', team: 'Ferrari', cost: 23.0, color: '#E8002D', abbr: 'HAM', f1id: 'lewis_hamilton' },
+            { id: 81, name: 'Piastri', team: 'McLaren', cost: 21.5, color: '#FF8000', abbr: 'oscar_piastri' },
+            { id: 63, name: 'Russell', team: 'Mercedes', cost: 19.0, color: '#27F4D2', abbr: 'RUS', f1id: 'george_russell' },
+            { id: 14, name: 'Alonso', team: 'Aston Martin', cost: 15.0, color: '#229971', abbr: 'ALO', f1id: 'fernando_alonso' },
+            { id: 55, name: 'Sainz', team: 'Williams', cost: 14.5, color: '#37BEDD', abbr: 'SAI', f1id: 'carlos_sainz' },
+            { id: 11, name: 'Perez', team: 'Red Bull', cost: 14.0, color: '#3671C6', abbr: 'PER', f1id: 'sergio_perez' },
+            { id: 22, name: 'Tsunoda', team: 'RB', cost: 11.0, color: '#6692FF', abbr: 'TSU', f1id: 'yuki_tsunoda' },
+            { id: 23, name: 'Albon', team: 'Williams', cost: 9.5, color: '#37BEDD', abbr: 'ALB', f1id: 'alexander_albon' },
+            { id: 10, name: 'Gasly', team: 'Alpine', cost: 10.5, color: '#FF87BC', abbr: 'GAS', f1id: 'pierre_gasly' },
+            { id: 31, name: 'Ocon', team: 'Haas', cost: 10.0, color: '#B6BABD', abbr: 'OCO', f1id: 'esteban_ocon' },
+            { id: 12, name: 'Antonelli', team: 'Mercedes', cost: 8.0, color: '#27F4D2', abbr: 'ANT', f1id: 'kimi_antonelli' },
+            { id: 87, name: 'Bearman', team: 'Haas', cost: 7.5, color: '#B6BABD', abbr: 'BEA', f1id: 'oliver_bearman' }
         ];
         let memes = [];
 
-        // --- CORE ENGINES ---
-        async function bootSystem() {
-            document.getElementById('boot-btn').classList.add('hidden');
-            document.getElementById('save-tools').classList.remove('hidden');
-            document.getElementById('main-ui').classList.remove('hidden');
+        // --- 3. SYSTEM BOOT ---
+        async function boot() {
+            document.getElementById('boot-box').classList.add('hidden');
+            document.getElementById('save-box').classList.remove('hidden');
+            document.getElementById('dash').classList.remove('hidden');
             
-            loadLocal();
-            attachListeners();
-            await fetchF1Data();
+            load();
+            document.getElementById('slider').addEventListener('input', render);
+            
+            // Re-fetch live data
+            await fetchF1();
             await fetchMemes();
             render();
         }
 
-        async function fetchF1Data() {
+        async function fetchF1() {
             try {
                 const res = await fetch('https://api.openf1.org/v1/drivers');
                 const data = await res.json();
                 if (data && data.length > 0) {
-                    // Map live data onto our grid logic
-                    data.slice(0, 20).forEach((live, i) => {
+                    data.slice(0, 15).forEach((d, i) => {
                         if (drivers[i]) {
-                            drivers[i].name = live.last_name || drivers[i].name;
-                            drivers[i].abbr = live.name_acronym || drivers[i].abbr;
+                            drivers[i].name = d.last_name || drivers[i].name;
+                            drivers[i].abbr = d.name_acronym || drivers[i].abbr;
                         }
                     });
-                    document.getElementById('api-status').innerText = "OpenF1: Live Link Active";
-                    document.getElementById('api-status').className = "text-[9px] font-mono text-green-500 uppercase";
+                    document.getElementById('api-status').innerText = "OpenF1: Connected";
+                    document.getElementById('api-status').classList.replace('text-blue-400', 'text-green-400');
                 }
-            } catch (e) {
-                document.getElementById('api-status').innerText = "OpenF1: API Offline (Using 2026 Projections)";
-            }
+            } catch (e) { document.getElementById('api-status').innerText = "OpenF1: Offline (Sim Active)"; }
         }
 
         async function fetchMemes() {
             try {
-                const res = await fetch(`https://api.allorigins.win/raw?url=https://www.reddit.com/r/formuladank/hot.json?limit=30`);
-                const j = await res.json();
+                const r = await fetch('https://api.allorigins.win/raw?url=https://www.reddit.com/r/formuladank/hot.json?limit=40');
+                const j = await r.json();
                 memes = j.data.children.filter(c => c.data.url.match(/\.(jpg|png|jpeg)$/)).map(c => c.data.url);
             } catch (e) { console.warn("Memes blocked."); }
         }
 
+        // --- 4. THE RENDERING ENGINE ---
         function render() {
-            const v = document.getElementById('vibe-slider').value;
-            const grid = document.getElementById('driver-grid');
+            const v = document.getElementById('slider').value;
+            const grid = document.getElementById('market-grid');
             const root = document.documentElement.style;
             
-            let mode = 0; // 0: Tech, 1: Rumor, 2: Oracle
-            if (v > 33) mode = 1;
+            let mode = 0; 
+            if (v > 33) mode = 1; 
             if (v > 66) mode = 2;
 
-            // Apply Theme
+            const dObj = DICT[mode];
+
+            // 1. Text Dictionary Swaps
+            document.getElementById('ui-title').innerText = dObj.title;
+            document.getElementById('ui-market-label').innerText = dObj.market;
+            document.getElementById('ui-budget-label').innerText = dObj.budget;
+            document.getElementById('ui-cost-label').innerText = dObj.cost;
+            document.getElementById('ui-sim-btn').innerText = dObj.sim;
+            document.getElementById('ui-squad-label').innerText = dObj.squad;
+
+            // 2. Background & Theme Shift
+            document.body.style.backgroundImage = `linear-gradient(rgba(0,0,0,0.7), rgba(0,0,0,0.7)), url('${BGS[mode]}')`;
             if (mode === 0) {
                 root.setProperty('--accent', '#3b82f6');
+                root.setProperty('--font', "'Inter'");
                 document.getElementById('scanlines').style.opacity = '0';
             } else if (mode === 1) {
                 root.setProperty('--accent', '#ec4899');
+                root.setProperty('--font', "'Playfair Display'");
                 document.getElementById('scanlines').style.opacity = '0.1';
             } else {
                 root.setProperty('--accent', '#22c55e');
-                document.getElementById('scanlines').style.opacity = '0.4';
+                root.setProperty('--font', "'Courier Prime'");
+                document.getElementById('scanlines').style.opacity = '0.5';
             }
 
+            // 3. Driver Grid
             grid.innerHTML = drivers.map(d => {
                 const isSelected = state.squad.includes(d.id);
-                let img = `<div class="w-12 h-12 bg-gray-800 flex items-center justify-center font-black text-xl" style="color:${d.color}">${d.abbr}</div>`;
                 
+                // Image Logic (Official vs Meme)
+                let mainImg = `https://media.formula1.com/content/dam/fom-website/drivers/2024Drivers/${d.f1id}.jpg.transform/2col/image.jpg`;
                 if (mode === 2 && memes.length > 0) {
-                    img = `<img src="${memes[d.id % memes.length]}" class="w-12 h-12 object-cover border border-green-500">`;
+                    mainImg = memes[(d.id * 7) % memes.length];
                 }
 
-                let lore = `[TELEMETRY]: Sector 3 clipping issues detected.`;
-                if (mode === 1) lore = `*Paddock whisper: ${d.name} unhappy with floor update.*`;
-                if (mode === 2) lore = `THE PROPHECY DEMANDS CHAOS.`;
+                // Blurb Logic
+                const blurbs = {
+                    0: `[TELEMETRY] Fuel flow optimal. MGU-K clipping +2%.`,
+                    1: `*Word from the hotel bar is that ${d.name} is looking at a seat change.*`,
+                    2: `PROPHECY: THE RED LIGHTS SHALL NEVER GO OUT.`
+                };
 
                 return `
-                    <div onclick="toggle(${d.id})" class="glass p-4 flex items-center gap-4 driver-card ${isSelected?'selected':''} ${mode===2?'glitch':''}">
-                        ${img}
-                        <div class="flex-grow">
-                            <div class="flex justify-between items-start">
-                                <h4 class="font-black uppercase text-sm">${d.name}</h4>
-                                <span class="text-[10px] font-mono text-green-400">$${d.cost}M</span>
-                            </div>
-                            <p class="text-[9px] opacity-50 uppercase mt-1 font-semibold">${d.team}</p>
-                            <p class="text-[10px] mt-2 italic opacity-80">${lore}</p>
-                        </div>
+                <div onclick="toggle(${d.id})" class="glass p-4 flex items-center gap-4 driver-card ${isSelected?'selected':''} ${mode===2?'glitch-active':''}">
+                    <div class="relative w-16 h-16 shrink-0 border-2 border-gray-800 overflow-hidden">
+                        <img src="${mainImg}" class="w-full h-full object-cover">
+                        ${mode === 2 ? `<div class="absolute inset-0 bg-green-500/20 mix-blend-overlay"></div>` : ''}
                     </div>
-                `;
+                    <div class="flex-grow min-w-0">
+                        <div class="flex justify-between items-start">
+                            <h4 class="font-black uppercase text-sm truncate">${d.name}</h4>
+                            <div class="flex items-center gap-1">
+                                <img src="${dObj.attr_img}" class="term-icon opacity-50">
+                                <span class="font-mono text-xs text-green-400 font-bold">$${d.cost}M</span>
+                            </div>
+                        </div>
+                        <p class="text-[9px] font-bold opacity-40 uppercase tracking-widest mt-1">${d.team}</p>
+                        <p class="text-[10px] mt-2 italic opacity-80 leading-tight">${blurbs[mode]}</p>
+                    </div>
+                </div>`;
             }).join('');
 
-            updateLedger();
+            updateStats();
         }
 
-        function updateLedger() {
-            const currentCost = state.squad.reduce((sum, id) => sum + drivers.find(d => d.id === id).cost, 0);
-            document.getElementById('display-budget').innerText = `$${state.budget.toFixed(1)}M`;
-            document.getElementById('display-cost').innerText = `$${currentCost.toFixed(1)}M`;
-            document.getElementById('squad-count').innerText = state.squad.length;
+        function updateStats() {
+            const curCost = state.squad.reduce((s, id) => s + drivers.find(d => d.id === id).cost, 0);
+            document.getElementById('budget-val').innerText = `$${state.budget.toFixed(1)}M`;
+            document.getElementById('cost-val').innerText = `$${curCost.toFixed(1)}M`;
+            document.getElementById('squad-count').innerText = `${state.squad.length}/5`;
             
             const list = document.getElementById('squad-list');
             list.innerHTML = state.squad.map(id => {
                 const d = drivers.find(x => x.id === id);
-                return `<div class="flex justify-between text-[10px] font-bold bg-white/5 p-2 border-l-2" style="border-color:${d.color}">
-                    <span>${d.name.toUpperCase()}</span>
-                    <span class="font-mono">$${d.cost}M</span>
+                return `<div class="flex justify-between p-3 bg-white/5 border-l-4" style="border-left-color:${d.color}">
+                    <span class="text-[10px] font-black uppercase">${d.name}</span>
+                    <span class="font-mono text-[10px]">$${d.cost}M</span>
                 </div>`;
-            }).join('');
+            }).join('') || `<div class="text-center py-8 opacity-20 text-xs uppercase font-black">No Active Contracts</div>`;
         }
 
-        // --- LOGIC ---
+        // --- 5. LOGIC & SAVE ---
         window.toggle = (id) => {
             const d = drivers.find(x => x.id === id);
-            const currentCost = state.squad.reduce((sum, sid) => sum + drivers.find(x => x.id === sid).cost, 0);
+            const total = state.squad.reduce((s, sid) => s + drivers.find(x => x.id === sid).cost, 0);
             
             if (state.squad.includes(id)) {
                 state.squad = state.squad.filter(x => x !== id);
             } else {
-                if (state.squad.length >= 5) return alert("Squad capacity reached.");
-                if (currentCost + d.cost > state.budget) return alert("Budget exceeded.");
+                if (state.squad.length >= 5) return alert("SQUAD LIMIT REACHED.");
+                if (total + d.cost > state.budget) return alert("CAPITAL DEPLETED.");
                 state.squad.push(id);
             }
-            saveLocal();
-            render();
+            save(); render();
         };
 
-        window.simRace = () => {
-            if (state.squad.length < 5) return alert("You need a full squad of 5 to race.");
-            const swing = (Math.random() * 10) - 4; // -$4M to +$6M
+        window.simulate = () => {
+            if(state.squad.length < 5) return alert("ROSTER INCOMPLETE.");
+            const swing = (Math.random() * 12) - 5;
             state.budget += swing;
             state.week++;
-            alert(`Race ${state.week-1} Result: ${swing > 0 ? 'Profit' : 'Loss'} of $${Math.abs(swing).toFixed(1)}M`);
-            saveLocal();
-            render();
+            alert(`RACE WEEK ${state.week-1} COMPLETE.\nMarket Sentiment: ${swing > 0 ? '+' : ''}$${swing.toFixed(1)}M`);
+            save(); render();
         };
 
-        function attachListeners() {
-            document.getElementById('vibe-slider').addEventListener('input', render);
-        }
-
-        function saveLocal() { localStorage.setItem(KEY, JSON.stringify(state)); }
-        function loadLocal() { 
-            const s = localStorage.getItem(KEY); 
-            if(s) state = JSON.parse(s); 
-        }
-        window.resetData = () => { if(confirm("Clear all data?")) { localStorage.clear(); location.reload(); }};
-        window.exportSave = () => { prompt("Save String (Copy this):", btoa(JSON.stringify(state))); };
-        window.importSave = () => { const s = prompt("Paste Save String:"); if(s) { state = JSON.parse(atob(s)); saveLocal(); render(); }};
-
+        function save() { localStorage.setItem(KEY, JSON.stringify(state)); }
+        function load() { const s = localStorage.getItem(KEY); if(s) state = JSON.parse(s); }
+        window.exportS = () => { prompt("Save Token (Copy this):", btoa(JSON.stringify(state))); };
+        window.importS = () => { const t = prompt("Paste Save Token:"); if(t) { state = JSON.parse(atob(t)); save(); render(); }};
+        window.wipe = () => { if(confirm("WIPE ENGINE DATA?")) { localStorage.clear(); location.reload(); }};
     </script>
 </body>
 </html>
