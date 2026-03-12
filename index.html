@@ -68,7 +68,7 @@
         }
         
         .expired-contract {
-            border: 2px solid #ef4444 !important; /* Red border */
+            border: 2px solid #ef4444 !important;
             background: rgba(239, 68, 68, 0.2) !important;
         }
     </style>
@@ -92,10 +92,15 @@
                     <input type="range" id="vibe-slider" min="0" max="100" value="0" class="w-full h-3 bg-gray-700 rounded-lg appearance-none cursor-pointer">
                 </div>
                 
-                <div class="flex justify-between text-xs text-gray-400 font-mono uppercase mb-6">
+                <div class="flex justify-between text-xs text-gray-400 font-mono uppercase mb-4">
                     <span>Pure Stats</span>
                     <span>Hype / Lifestyle</span>
                     <span>Unfiltered Reddit</span>
+                </div>
+
+                <div id="score-tip-box" class="glass-panel text-left p-3 rounded-lg border-opacity-50 border-white text-[11px] text-gray-300 space-y-1 font-sans mb-6">
+                  <div class="font-bold uppercase tracking-wider text-white">Score Explainer:</div>
+                  <p>The Predicted Chaos Score combines F1 performance data (avg finish, consistency) with Reddit sentiment. <b>Engineer (0-33%)</b> leans on hard data. <b>Paddock (34-66%)</b> adds lifestyle hype. <b>Oracle (67-100%)</b> is pure meme chaos.</p>
                 </div>
 
                 <div class="flex flex-wrap justify-center gap-4 mb-4">
@@ -151,14 +156,18 @@
         // System State
         let drivers = [];
         let scoredDrivers = []; 
-        let backgrounds = { engineer: [], paddock: [], oracle: [] };
+        let globalBgs = { engineer: [], paddock: [], oracle: [] };
         let currentBgIndex = 0;
         let bgInterval;
 
+        // Data Engines
+        let realStandings = {};
+        let driverRedditData = {}; 
+
         // GridRival State
         let budget = 100.0;
-        let squad = []; // Array of { id, contractLength, racesRemaining, isTalent }
-        let driverSalaries = {}; // { driver_number: salary }
+        let squad = []; 
+        let driverSalaries = {}; 
 
         const slider = document.getElementById('vibe-slider');
         const vibeLabel = document.getElementById('vibe-label');
@@ -166,7 +175,6 @@
         const rootStyles = document.documentElement.style;
         const budgetInput = document.getElementById('budget-input');
 
-        // Load from Local Storage
         function loadState() {
             const savedSquad = localStorage.getItem('cr_squad');
             const savedBudget = localStorage.getItem('cr_budget');
@@ -192,7 +200,6 @@
             renderSquad();
         });
 
-        // Vibe Change Listener
         slider.addEventListener('input', (e) => {
             const val = parseInt(e.target.value);
             updateVibeState(val);
@@ -236,31 +243,111 @@
             document.getElementById('advance-btn').style.display = 'inline-block';
             
             try {
-                // Fetch Grid
+                // Fetch Core Driver Data
                 const dRes = await fetch('https://api.openf1.org/v1/drivers');
                 const rawDrivers = await dRes.json();
                 drivers = Array.from(new Set(rawDrivers.map(a => a.driver_number)))
                     .map(num => rawDrivers.find(a => a.driver_number === num))
                     .filter(d => d.driver_number).slice(0, 20);
 
-                // Initialize default salaries if missing
+                // Initialize salaries and Setup Keyword Regex Maps per driver
                 drivers.forEach(d => {
                     if (!driverSalaries[d.driver_number]) {
                         driverSalaries[d.driver_number] = parseFloat((10 + (d.driver_number % 15)).toFixed(1));
                     }
+                    
+                    const nickMap = {
+                        1: ['max', 'verstappen'], 11: ['checo', 'perez'], 44: ['lewis', 'hamilton', 'lh44'], 
+                        4: ['lando', 'norris'], 16: ['charles', 'leclerc', 'chuck'], 55: ['carlos', 'sainz', 'smooth operator'], 
+                        81: ['oscar', 'piastri', 'pastry'], 63: ['george', 'russell'], 14: ['fernando', 'alonso', 'nando', 'magic'],
+                        18: ['lance', 'stroll'], 10: ['pierre', 'gasly'], 31: ['esteban', 'ocon'], 23: ['alex', 'albon'], 
+                        22: ['yuki', 'tsunoda'], 27: ['nico', 'hulkenberg'], 20: ['kevin', 'magnussen', 'kmag'], 
+                        77: ['valtteri', 'bottas'], 24: ['zhou', 'guanyu'], 2: ['logan', 'sargeant'], 3: ['daniel', 'ricciardo'], 
+                        30: ['liam', 'lawson'], 12: ['kimi', 'antonelli'], 38: ['oliver', 'bearman']
+                    };
+                    
+                    let keys = nickMap[d.driver_number] || d.full_name.toLowerCase().split(' ').filter(n => n.length > 2);
+                    
+                    driverRedditData[d.driver_number] = {
+                        regex: new RegExp(`\\b(${keys.join('|')})\\b`, 'i'),
+                        paddockTextWeek: [], paddockTextMonth: [],
+                        oracleTextWeek: [], oracleTextMonth: [],
+                        paddockImg: [], oracleImg: []
+                    };
                 });
 
-                document.getElementById('status').innerText = "Scraping Multi-Node Reddit Networks...";
-                
-                const [engBgs, padBgs, oraBgs] = await Promise.all([
-                    scrapeMultipleSubs(['F1Porn', 'f1technical']),
-                    scrapeMultipleSubs(['formula1', 'GrandPrixRacing']),
-                    scrapeMultipleSubs(['formuladank', 'formulabuddyretard'])
+                document.getElementById('status').innerText = "Connecting to Real F1 API & Reddit Datastreams...";
+
+                // Fetch Real Championship Data (Jolpi API)
+                try {
+                    const stRes = await fetch("https://api.jolpi.ca/ergast/f1/current/driverStandings.json");
+                    const stJson = await stRes.json();
+                    const standings = stJson.MRData.StandingsTable.StandingsLists[0].DriverStandings;
+                    standings.forEach(s => {
+                        realStandings[s.Driver.permanentNumber] = {
+                            position: s.position, points: s.points, wins: s.wins
+                        };
+                    });
+                } catch(e) { console.warn("Failed to fetch Jolpi F1 Data"); }
+
+                // Fetch Reddit Data
+                const ONE_WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+                const now = Date.now();
+
+                async function fetchSubs(subs, time, limit) {
+                    let all = [];
+                    for (let sub of subs) {
+                        try {
+                            const res = await fetch(`https://corsproxy.io/?https://www.reddit.com/r/${sub}/top.json?t=${time}&limit=${limit}`);
+                            const json = await res.json();
+                            all = all.concat(json.data.children.map(c => c.data));
+                        } catch(e) { console.warn(`Could not fetch r/${sub}`); }
+                    }
+                    return all;
+                }
+
+                // Batch fetches (Month for text to allow week/month filtering, Year for deep image pool)
+                const [paddockPosts, oraclePosts, engImgPosts, paddockImgPosts, oracleImgPosts] = await Promise.all([
+                    fetchSubs(['formula1', 'GrandPrixRacing'], 'month', 100),
+                    fetchSubs(['formuladank', 'formulabuddyretard'], 'month', 100),
+                    fetchSubs(['F1Porn', 'f1technical'], 'year', 50),
+                    fetchSubs(['formula1', 'GrandPrixRacing'], 'year', 100),
+                    fetchSubs(['formuladank', 'formulabuddyretard'], 'year', 100)
                 ]);
 
-                backgrounds.engineer = engBgs;
-                backgrounds.paddock = padBgs;
-                backgrounds.oracle = oraBgs;
+                // Set Global Backgrounds
+                globalBgs.engineer = engImgPosts.filter(p => p.url && p.url.match(/\.(jpeg|jpg|png)$/i)).map(p => p.url);
+                globalBgs.paddock = paddockImgPosts.filter(p => p.url && p.url.match(/\.(jpeg|jpg|png)$/i)).map(p => p.url);
+                globalBgs.oracle = oracleImgPosts.filter(p => p.url && p.url.match(/\.(jpeg|jpg|png)$/i)).map(p => p.url);
+
+                if(!globalBgs.engineer.length) globalBgs.engineer.push('https://images.unsplash.com/photo-1614200187524-dc4b892acf16?auto=format&fit=crop');
+                if(!globalBgs.paddock.length) globalBgs.paddock.push('https://images.unsplash.com/photo-1614200187524-dc4b892acf16?auto=format&fit=crop');
+                if(!globalBgs.oracle.length) globalBgs.oracle.push('https://images.unsplash.com/photo-1614200187524-dc4b892acf16?auto=format&fit=crop');
+
+                // Filter into Driver Specific Pools
+                drivers.forEach(d => {
+                    let dData = driverRedditData[d.driver_number];
+                    
+                    paddockPosts.forEach(p => {
+                        if (dData.regex.test(p.title)) {
+                            if ((now - (p.created_utc * 1000)) < ONE_WEEK_MS) dData.paddockTextWeek.push(p.title);
+                            else dData.paddockTextMonth.push(p.title);
+                        }
+                    });
+                    oraclePosts.forEach(p => {
+                        if (dData.regex.test(p.title)) {
+                            if ((now - (p.created_utc * 1000)) < ONE_WEEK_MS) dData.oracleTextWeek.push(p.title);
+                            else dData.oracleTextMonth.push(p.title);
+                        }
+                    });
+
+                    paddockImgPosts.forEach(p => {
+                        if (p.url && p.url.match(/\.(jpeg|jpg|png)$/i) && dData.regex.test(p.title)) dData.paddockImg.push(p.url);
+                    });
+                    oracleImgPosts.forEach(p => {
+                        if (p.url && p.url.match(/\.(jpeg|jpg|png)$/i) && dData.regex.test(p.title)) dData.oracleImg.push(p.url);
+                    });
+                });
 
                 document.getElementById('status').innerText = "System Fully Operational.";
                 
@@ -274,37 +361,20 @@
 
             } catch (err) {
                 console.error(err);
-                document.getElementById('status').innerText = "Critical Network Failure. Ensure CORS proxy is reachable.";
+                document.getElementById('status').innerText = "Critical Network Failure.";
                 document.getElementById('boot-btn').style.display = 'inline-block';
             }
         }
 
-        async function scrapeMultipleSubs(subs) {
-            let allPosts = [];
-            for (let sub of subs) {
-                try {
-                    const res = await fetch(`https://corsproxy.io/?https://www.reddit.com/r/${sub}/hot.json?limit=25`);
-                    const json = await res.json();
-                    let posts = json.data.children
-                        .filter(post => post.data.url.match(/\.(jpeg|jpg|png)$/i))
-                        .map(post => ({ url: post.data.url, title: post.data.title }));
-                    allPosts = allPosts.concat(posts);
-                } catch (e) {
-                    console.warn(`Could not fetch r/${sub}`);
-                }
-            }
-            return allPosts.length > 0 ? allPosts : [{url: 'https://images.unsplash.com/photo-1614200187524-dc4b892acf16?q=80&w=1000&auto=format&fit=crop', title: 'Data Missing...'}];
-        }
-
         function cycleBackground() {
             const val = parseInt(slider.value);
-            let activeArray = backgrounds.engineer;
-            if (val >= 34 && val < 67) activeArray = backgrounds.paddock;
-            if (val >= 67) activeArray = backgrounds.oracle;
+            let activeArray = globalBgs.engineer;
+            if (val >= 34 && val < 67) activeArray = globalBgs.paddock;
+            if (val >= 67) activeArray = globalBgs.oracle;
 
             if (activeArray.length > 0) {
                 currentBgIndex = (currentBgIndex + 1) % activeArray.length;
-                bgLayer.style.backgroundImage = `url('${activeArray[currentBgIndex].url}')`;
+                bgLayer.style.backgroundImage = `url('${activeArray[currentBgIndex]}')`;
             }
         }
 
@@ -316,61 +386,42 @@
                 let sBase = 50; 
                 if(['Red Bull Racing', 'Ferrari', 'McLaren', 'Mercedes'].includes(d.team_name)) sBase = 85;
                 if(d.team_name === 'Aston Martin' || d.team_name === 'RB') sBase = 65;
-
                 let sMeme = ((d.driver_number * 13) % 90) + 10; 
-                
                 let finalScore = (sBase * (1 - V)) + (sMeme * V);
-                
                 let wildcardText = "";
                 if (V > 0.8 && Math.random() > 0.85) {
                     let swing = (Math.random() > 0.5 ? 150 : -75);
                     finalScore += swing;
                     wildcardText = swing > 0 ? "🔥 VIRAL MEME BUFF" : "💀 TANKED BY REDDIT";
                 }
-
                 return { ...d, score: finalScore, wildcard: wildcardText, salary: driverSalaries[d.driver_number] };
             });
-
             scoredDrivers.sort((a, b) => b.score - a.score);
         }
 
         window.updateSalary = function(e, driverNum) {
-            e.stopPropagation(); // Prevents clicking the card
+            e.stopPropagation();
             let newSalary = parseFloat(e.target.value);
             if (!isNaN(newSalary)) {
                 driverSalaries[driverNum] = newSalary;
                 saveState();
                 calculateScores();
-                renderSquad(); // Update budget totals
+                renderSquad();
             }
         }
 
         window.handleCardClick = function(driverNum) {
-            const squadIndex = squad.findIndex(s => s.id === driverNum);
-            
-            if (squadIndex > -1) {
-                // Already in squad, do nothing (user must use Drop button in panel)
-                alert("Driver is already in your squad. Manage them in the squad panel.");
-                return;
-            }
-
-            if (squad.length >= 6) {
-                return alert("Your GridRival squad is full (6/6)! Drop a driver first.");
-            }
+            if (squad.some(s => s.id === driverNum)) return alert("Driver is already in squad.");
+            if (squad.length >= 6) return alert("Squad full!");
 
             const driverSal = driverSalaries[driverNum];
             const currentSpent = squad.reduce((acc, s) => acc + driverSalaries[s.id], 0);
-            if (budget - currentSpent - driverSal < 0) {
-                return alert("Insufficient budget! Update your total budget or choose a cheaper driver.");
-            }
+            if (budget - currentSpent - driverSal < 0) return alert("Over budget!");
 
-            let length = prompt(`Enter contract length for driver #${driverNum} (1-5 races):`, "3");
-            if (length === null) return; // Cancelled
+            let length = prompt(`Enter contract (1-5 races):`, "3");
+            if (length === null) return;
             length = parseInt(length);
-            
-            if (isNaN(length) || length < 1 || length > 5) {
-                return alert("Invalid contract length. Must be between 1 and 5.");
-            }
+            if (isNaN(length) || length < 1 || length > 5) return alert("Invalid contract.");
 
             squad.push({ id: driverNum, contractLength: length, racesRemaining: length, isTalent: false });
             saveState();
@@ -386,35 +437,49 @@
         }
 
         window.setTalent = function(driverNum) {
-            const driverSal = driverSalaries[driverNum];
-            if (driverSal > 18.0) {
-                return alert("Talent driver must cost $18.0M or less!");
-            }
+            if (driverSalaries[driverNum] > 18.0) return alert("Talent cap is $18.0M!");
             squad.forEach(s => s.isTalent = (s.id === driverNum));
             saveState();
             renderSquad();
         }
 
         window.advanceRace = function() {
-            if(confirm("Advance to next race? This will reduce all active contracts by 1.")) {
-                squad.forEach(s => {
-                    if (s.racesRemaining > 0) s.racesRemaining -= 1;
-                });
+            if(confirm("Advance race?")) {
+                squad.forEach(s => { if (s.racesRemaining > 0) s.racesRemaining -= 1; });
                 saveState();
                 renderSquad();
             }
         }
 
+        function pickText(arr, d) {
+            if (!arr || arr.length === 0) return null;
+            return arr[(d.driver_number * 7) % arr.length];
+        }
+
         function getVibeBlurb(d) {
             const val = parseInt(slider.value);
+            
             if (val < 34) {
-                return `HISTORICAL SIM: Avg Finish ${(d.driver_number % 10) + 1}.4 | Consistency ${99 - (d.driver_number % 20)}%`;
+                let st = realStandings[d.driver_number];
+                if (st) return `CHAMPIONSHIP DATA: P${st.position} | Points: ${st.points} | Wins: ${st.wins}`;
+                return `HISTORICAL SIM: Avg Fin ${(d.driver_number % 10) + 1}.4 | Cons ${99 - (d.driver_number % 20)}%`;
+            } 
+            
+            const dData = driverRedditData[d.driver_number];
+            if (!dData) return "Connecting datastream...";
+
+            if (val < 67) {
+                let txt = pickText(dData.paddockTextWeek, d);
+                if (txt) return `"${txt}"`;
+                txt = pickText(dData.paddockTextMonth, d);
+                if (txt) return `(1mo) "${txt}"`;
+                return `"Evaluating paddock murmurs..."`;
             } else {
-                const arr = val < 67 ? backgrounds.paddock : backgrounds.oracle;
-                if (arr.length === 0) return "Loading datastream...";
-                // Pick a pseudo-random title based on driver number so it stays static per vibe
-                const index = (d.driver_number * 7) % arr.length;
-                return `"${arr[index].title}"`;
+                let txt = pickText(dData.oracleTextWeek, d);
+                if (txt) return `"${txt}"`;
+                txt = pickText(dData.oracleTextMonth, d);
+                if (txt) return `(1mo) "${txt}"`;
+                return `"Dankness not found. Defaulting to S🅱️inalla."`;
             }
         }
 
@@ -425,8 +490,12 @@
 
             grid.innerHTML = scoredDrivers.map((d) => {
                 let imageSrc = d.headshot_url || 'https://via.placeholder.com/150';
-                if (V > 0.66 && backgrounds.oracle.length > 0) {
-                    imageSrc = backgrounds.oracle[(d.driver_number * 7) % backgrounds.oracle.length].url;
+                const dData = driverRedditData[d.driver_number];
+
+                if (V >= 0.34 && V < 0.67 && dData && dData.paddockImg.length > 0) {
+                    imageSrc = dData.paddockImg[(d.driver_number * 7) % dData.paddockImg.length];
+                } else if (V >= 0.67 && dData && dData.oracleImg.length > 0) {
+                    imageSrc = dData.oracleImg[(d.driver_number * 7) % dData.oracleImg.length];
                 }
 
                 const isSelected = squad.some(s => s.id === d.driver_number);
@@ -434,23 +503,21 @@
                 const blurb = getVibeBlurb(d);
 
                 return `
-                <div onclick="handleCardClick(${d.driver_number})" class="glass-panel driver-card p-4 rounded-xl flex items-center space-x-4 border-l-8 ${isSelected ? 'selected-driver' : ''}" style="${borderStyle}">
-                    <img src="${imageSrc}" alt="Driver" class="w-20 h-20 rounded-full object-cover border-2 border-gray-600 bg-gray-800">
-                    <div class="flex-grow max-w-[50%]">
-                        <div class="text-xs font-bold text-gray-400 uppercase">${d.team_name}</div>
-                        <h3 class="text-xl font-bold truncate">${d.full_name}</h3>
-                        <div class="text-[10px] mt-1 text-gray-300 italic truncate" title='${blurb}'>${blurb}</div>
-                        ${d.wildcard ? `<div class="text-xs font-bold text-yellow-400 mt-1">${d.wildcard}</div>` : ''}
+                <div onclick="handleCardClick(${d.driver_number})" class="glass-panel driver-card p-3 rounded-xl grid grid-cols-[80px_1fr_auto] gap-3 border-l-8 items-center overflow-hidden ${isSelected ? 'selected-driver' : ''}" style="${borderStyle}">
+                    <img src="${imageSrc}" class="w-20 h-20 rounded-full object-cover border-2 border-gray-600 bg-gray-800 shrink-0">
+                    <div class="min-w-0 flex flex-col space-y-1">
+                        <div class="text-[10px] font-bold text-gray-400 uppercase truncate">${d.team_name}</div>
+                        <h3 class="text-lg font-bold truncate leading-tight">${d.full_name}</h3>
+                        <div class="text-[10px] text-gray-300 italic truncate" title='${blurb}'>${blurb}</div>
+                        ${d.wildcard ? `<div class="text-[10px] font-bold text-yellow-400">${d.wildcard}</div>` : ''}
                     </div>
-                    <div class="text-right flex flex-col items-end">
-                        <div class="text-[10px] uppercase tracking-widest text-gray-400">Score</div>
-                        <div class="text-2xl font-mono font-bold mb-2" style="color: var(--accent-color)">
-                            ${d.score.toFixed(1)}
-                        </div>
+                    <div class="flex flex-col items-end justify-center pl-2 border-l border-gray-700/50 min-w-[100px]">
+                        <div class="text-[9px] uppercase tracking-tighter text-gray-400">Score</div>
+                        <div class="text-2xl font-mono font-bold leading-none mb-2" style="color: var(--accent-color)">${d.score.toFixed(1)}</div>
                         <div class="flex items-center space-x-1" onclick="event.stopPropagation()">
-                            <span class="text-xs text-gray-400">$</span>
-                            <input type="number" step="0.1" value="${d.salary}" onchange="updateSalary(event, ${d.driver_number})" class="w-16 bg-gray-800 text-white text-xs p-1 border border-gray-600 rounded text-right">
-                            <span class="text-xs text-gray-400">M</span>
+                            <span class="text-[10px] text-gray-400">$</span>
+                            <input type="number" step="0.1" value="${d.salary}" onchange="updateSalary(event, ${d.driver_number})" class="w-14 bg-gray-900 text-white text-[10px] p-1 border border-gray-700 rounded text-right">
+                            <span class="text-[10px] text-gray-400 font-bold">M</span>
                         </div>
                     </div>
                 </div>`;
@@ -460,57 +527,45 @@
         function renderSquad() {
             const squadList = document.getElementById('squad-list');
             const squadTotal = document.getElementById('squad-total');
-            const squadHeader = document.getElementById('squad-header');
             const budgetSpentEl = document.getElementById('budget-spent');
             const budgetRemEl = document.getElementById('budget-remaining');
             
-            squadHeader.innerText = `Your Squad (${squad.length}/6)`;
-
+            document.getElementById('squad-header').innerText = `Your Squad (${squad.length}/6)`;
             let spent = 0;
             squad.forEach(s => spent += (driverSalaries[s.id] || 0));
             let remaining = budget - spent;
-
             budgetSpentEl.innerText = `$${spent.toFixed(1)}M`;
             budgetRemEl.innerText = `$${remaining.toFixed(1)}M`;
             budgetRemEl.className = remaining < 0 ? 'font-mono text-red-500 font-bold' : 'font-mono text-green-400 font-bold';
 
             if (squad.length === 0) {
-                squadList.innerHTML = `<div class="text-center text-gray-500 italic py-8">Select drivers from the grid to build your squad.</div>`;
+                squadList.innerHTML = `<div class="text-center text-gray-500 italic py-8">Select drivers...</div>`;
                 squadTotal.innerText = "0.0";
                 return;
             }
 
             let totalScore = 0;
-            const squadHTML = squad.map(s => {
+            squadList.innerHTML = squad.map(s => {
                 const d = scoredDrivers.find(x => x.driver_number === s.id);
                 if(!d) return '';
-                
-                let points = d.score;
-                if (s.isTalent) points *= 2;
+                let points = d.score * (s.isTalent ? 2 : 1);
                 totalScore += points;
-
-                const isExpired = s.racesRemaining === 0;
-                
                 return `
-                <div class="bg-black bg-opacity-50 p-3 rounded border ${isExpired ? 'expired-contract' : 'border-gray-700'}">
+                <div class="bg-black/50 p-3 rounded border ${s.racesRemaining === 0 ? 'expired-contract' : 'border-gray-700'}">
                     <div class="flex justify-between items-start mb-2">
-                        <div>
-                            <span class="text-sm font-bold">${d.full_name} ${s.isTalent ? '⭐ (TALENT)' : ''}</span>
-                            <span class="text-xs text-gray-400 block">${d.team_name} | $${d.salary}M</span>
-                            ${isExpired ? `<span class="text-xs font-bold text-red-400 uppercase mt-1 block">Contract Expired</span>` : `<span class="text-xs text-blue-300 block">Races Left: ${s.racesRemaining}/${s.contractLength}</span>`}
+                        <div class="min-w-0">
+                            <span class="text-sm font-bold truncate block">${d.full_name} ${s.isTalent ? '⭐' : ''}</span>
+                            <span class="text-[10px] text-gray-400 block">${d.team_name} | $${d.salary}M</span>
+                            <span class="text-[10px] font-bold ${s.racesRemaining === 0 ? 'text-red-400' : 'text-blue-300'}">${s.racesRemaining === 0 ? 'EXPIRED' : 'Races: '+s.racesRemaining+'/'+s.contractLength}</span>
                         </div>
-                        <div class="text-right">
-                            <div class="font-mono text-lg" style="color: var(--accent-color)">${points.toFixed(1)}</div>
-                        </div>
+                        <div class="font-mono text-lg" style="color: var(--accent-color)">${points.toFixed(1)}</div>
                     </div>
-                    <div class="flex space-x-2 border-t border-gray-800 pt-2 mt-1">
-                        <button onclick="dropDriver(${d.driver_number})" class="text-[10px] bg-red-900 hover:bg-red-700 text-white px-2 py-1 rounded uppercase tracking-wider">Drop/Break</button>
-                        ${!s.isTalent && d.salary <= 18.0 ? `<button onclick="setTalent(${d.driver_number})" class="text-[10px] bg-yellow-700 hover:bg-yellow-600 text-white px-2 py-1 rounded uppercase tracking-wider">Set Talent</button>` : ''}
+                    <div class="flex space-x-1 pt-2 border-t border-gray-800">
+                        <button onclick="dropDriver(${d.driver_number})" class="text-[9px] bg-red-900/50 hover:bg-red-800 px-2 py-1 rounded">DROP</button>
+                        ${!s.isTalent && d.salary <= 18.0 ? `<button onclick="setTalent(${d.driver_number})" class="text-[9px] bg-yellow-700/50 hover:bg-yellow-600 px-2 py-1 rounded">TALENT</button>` : ''}
                     </div>
                 </div>`;
             }).join('');
-
-            squadList.innerHTML = squadHTML;
             squadTotal.innerText = totalScore.toFixed(1);
         }
     </script>
